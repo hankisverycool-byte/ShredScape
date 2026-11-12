@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+const source=ts.transpile(fs.readFileSync('app/tricks.ts','utf8'),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022});
+const {emptyTrick,landingResult,advanceHeading,travel}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+test('free roam can turn uphill and move sideways',()=>{const heading=advanceHeading(0,1,Math.PI/1.7);assert.ok(travel(0,0,heading,100,1).y < -99);assert.ok(travel(0,0,Math.PI/2,100,1).x>99);});
+test('completed spin flip and grab earn a variety multiplier',()=>{const result=landingResult({...emptyTrick(),spin:3*Math.PI,flip:2*Math.PI,grabTime:1});assert.equal(result.clean,true);assert.equal(result.multiplier,4);assert.ok(result.points>4000);assert.ok(result.names.includes('540°'));});
+test('unfinished flip or sideways landing loses the combo',()=>{assert.equal(landingResult({...emptyTrick(),flip:Math.PI}).points,0);assert.equal(landingResult({...emptyTrick(),spin:Math.PI/2}).clean,false);});
+test('holding a grab and completing a double flip increase score',()=>{assert.ok(landingResult({...emptyTrick(),grabTime:1}).points>landingResult({...emptyTrick(),grabTime:.2}).points);assert.ok(landingResult({...emptyTrick(),flip:4*Math.PI}).points>landingResult({...emptyTrick(),flip:2*Math.PI}).points);});

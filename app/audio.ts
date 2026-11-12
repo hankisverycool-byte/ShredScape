@@ -1,5 +1,6 @@
 /** Original eight-bar "Pinewood Passage" score, synthesized entirely in the browser. */
 export function createAudio() {
+  let volume = 0.5;
   let context: AudioContext | undefined;
   let output: GainNode | undefined;
   let music: BiquadFilterNode | undefined;
@@ -68,7 +69,7 @@ export function createAudio() {
     await context.resume();
     if (destroyed || !enabled || document.hidden) return;
     output.gain.cancelScheduledValues(context.currentTime);
-    output.gain.setTargetAtTime(0.32, context.currentTime, 0.04);
+    output.gain.setTargetAtTime(volume * 0.32, context.currentTime, 0.04);
     nextNote = context.currentTime + 0.04;
     if (!timer) timer = setInterval(schedule, 90);
     schedule();
@@ -81,6 +82,7 @@ export function createAudio() {
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', visibility);
 
   return {
+    setVolume(value: number) { volume = Math.max(0, Math.min(1, value)); if(context && output && enabled) output.gain.setTargetAtTime(volume * 0.32, context.currentTime, 0.04); },
     async setEnabled(value: boolean) {
       if (destroyed || typeof window === 'undefined') return;
       enabled = value;
