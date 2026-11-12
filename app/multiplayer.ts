@@ -1,7 +1,7 @@
 import type { Outfit, Peer } from "./game-engine";
 
 export type RoomSession = { code: string; id: string; token: string };
-export type PlayerState = Pick<Peer, "x" | "y" | "z" | "angle" | "score" | "outfit">;
+export type PlayerState = Pick<Peer, "x" | "y" | "z" | "angle" | "score" | "outfit" | "motion">;
 export type RoomUpdate = { code: string; players: Peer[]; serverTime: number };
 
 export class RoomError extends Error {

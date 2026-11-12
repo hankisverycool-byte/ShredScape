@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 // Override ROOM_TEST_URL to use a different local port.
 const base = process.env.ROOM_TEST_URL || "http://127.0.0.1:5173";
 const outfit = { jacket: "#cf714e", pants: "#344c5d", hat: "#e3bc6b", gear: "snowboard" };
-const position = { x: 15, y: 320, z: 12, angle: 0.5, score: 1800, outfit };
+const position = { x: 15, y: 320, z: 12, angle: 0.5, score: 1800, outfit, motion:{spin:-Math.PI,flip:-2*Math.PI,pushPhase:1.2,pushPower:.8,grab:1} };
 
 async function call(payload) {
   const response = await fetch(`${base}/api/rooms`, {
@@ -47,13 +47,14 @@ test("real room clients share state, enforce membership, and isolate rooms", asy
     assert.match(result.response.headers.get("cache-control"), /no-store/);
     assert.equal(result.body.players.length, 2);
 
-    const changedOutfit = { ...outfit, jacket: "#96b6a4", gear: "skis" };
+    const changedOutfit = { ...outfit, jacket: "#96b6a4", gear: "skis", avatar: "classic" };
     result = await call({ action: "sync", ...friend, state: { ...position, x: -21, score: 600, outfit: changedOutfit } });
     assert.equal(result.response.status, 200, result.body.error);
     const visibleHost = result.body.players.find((player) => player.id === host.id);
     assert.equal(visibleHost.y, 320);
     assert.equal(visibleHost.score, 1800);
     assert.deepEqual(visibleHost.outfit, outfit);
+    assert.deepEqual(visibleHost.motion, position.motion);
     assert.equal("token" in visibleHost, false);
     assert.equal("token_hash" in visibleHost, false);
 
@@ -68,7 +69,7 @@ test("real room clients share state, enforce membership, and isolate rooms", asy
     result = await call({ action: "sync", ...friend, state: position });
     assert.equal(result.body.players.find((player) => player.id === host.id).score, 1800);
 
-    result = await call({ action: "sync", ...host, state: { ...position, x: null } });
+    result = await call({ action: "sync", ...host, state: { ...position, motion:{...position.motion,spin:"bad"} } });
     assert.equal(result.response.status, 400);
     result = await call({ action: "join", code: "bad", name: "Invalid", outfit });
     assert.equal(result.response.status, 400);

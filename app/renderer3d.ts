@@ -1,14 +1,16 @@
 import * as T from 'three';
+import {createModelAssets} from './model-assets';
 import type {Outfit,Peer,GameSettings} from './game-engine';
 import {groundHeight,LOCATIONS} from './world';
 type Feature={kind:string;x:number;y:number;size:number;id:string;seed:number};
-type Frame={view:string;settings:GameSettings;x:number;y:number;z:number;angle:number;speed:number;clock:number;bail:number;spin:number;flip:number;grab:number;playing:boolean;outfit:Outfit;features:Feature[];peers:Peer[];particles:{x:number;y:number;z:number;size:number;life:number}[]};
+type Frame={view:string;settings:GameSettings;x:number;y:number;z:number;angle:number;speed:number;pushPhase:number;pushPower:number;clock:number;bail:number;spin:number;flip:number;grab:number;playing:boolean;outfit:Outfit;features:Feature[];peers:Peer[];particles:{x:number;y:number;z:number;size:number;life:number}[]};
 const S=.05, center=(y:number)=>Math.sin(y*.0017)*68+Math.sin(y*.00043)*42;
 const hash=(n:number)=>{const k=Math.sin(n*127.1+311.7)*43758.5453;return k-Math.floor(k);};
 const ground=groundHeight;
 export function createMountain3D(canvas:HTMLCanvasElement){
  const renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance'});
- renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor('#accbd2');
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor('#accbd2');
+ let assetRevision=0,seenAssetRevision=0;const models=createModelAssets(()=>assetRevision++);
  const scene=new T.Scene();scene.fog=new T.Fog('#accbd2',65,190);
  const camera=new T.PerspectiveCamera(57,1,.1,350);
  const hemi=new T.HemisphereLight('#e9faff','#607368',2.2);scene.add(hemi);
@@ -19,7 +21,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  function mesh(g:T.BufferGeometry,c:string,parent:T.Object3D,pos:number[],scale:number[]){const m=new T.Mesh(g,mat(c));m.position.set(pos[0],pos[1],pos[2]);m.scale.set(scale[0],scale[1],scale[2]);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
  function box(p:T.Object3D,c:string,x:number,y:number,z:number,w:number,h:number,d:number){return mesh(boxGeo,c,p,[x,y,z],[w,h,d]);}
  function label(text:string){const c=document.createElement('canvas');c.width=512;c.height=96;const ctx=c.getContext('2d')!;ctx.fillStyle='#20372ee8';ctx.fillRect(0,0,512,96);ctx.strokeStyle='#e1c28c';ctx.lineWidth=5;ctx.strokeRect(5,5,502,86);ctx.fillStyle='#f1e5c7';ctx.textAlign='center';ctx.font='bold 29px Georgia';ctx.fillText(text,256,58);const tex=new T.CanvasTexture(c);tex.magFilter=T.NearestFilter;const sprite=new T.Sprite(new T.SpriteMaterial({map:tex,depthTest:true}));sprite.scale.set(6,1.125,1);return sprite;}
- function tree(parent:T.Object3D,size:number){box(parent,'#705b43',0,1,0,.3,2,.3);for(let i=0;i<3;i++){mesh(coneGeo,i%2?'#375d51':'#2b4e43',parent,[0,1.6+i*.9,0],[(1.6-i*.35)*size,2*size,(1.6-i*.35)*size]);mesh(coneGeo,'#e3eee7',parent,[0,2.05+i*.9,0],[(1.24-i*.27)*size,1.35*size,(1.24-i*.27)*size]);}}
+ function tree(parent:T.Object3D,size:number,seed=0){const imported=models.tree(seed);if(imported){imported.scale.setScalar(size);parent.add(imported);return;}box(parent,'#705b43',0,1,0,.3,2,.3);for(let i=0;i<3;i++){mesh(coneGeo,i%2?'#375d51':'#2b4e43',parent,[0,1.6+i*.9,0],[(1.6-i*.35)*size,2*size,(1.6-i*.35)*size]);mesh(coneGeo,'#e3eee7',parent,[0,2.05+i*.9,0],[(1.24-i*.27)*size,1.35*size,(1.24-i*.27)*size]);}}
  function cabin(parent:T.Object3D){box(parent,'#856448',0,1.5,0,7,3,5);box(parent,'#af8c61',0,.3,2.8,8,.6,1.4);const roof=mesh(new T.CylinderGeometry(0,5,2.4,4), '#dce8df',parent,[0,4,0],[1.15,1,.85]);roof.rotation.y=Math.PI/4;box(parent,'#423e35',0,1,2.54,1.1,2,.12);for(const x of [-2.2,2.2]){box(parent,'#f5cf78',x,1.7,2.55,1.1,1,.12);box(parent,'#433c30',x,1.7,2.65,.1,1,.1);}box(parent,'#716e60',2,4.5,-1,.65,2,.65);}
  function sign(parent:T.Object3D,title:string){box(parent,'#897352',0,1.5,0,.18,3,.18);const l=label(title);l.position.set(0,3,0);parent.add(l);}
  const world=new T.Group();scene.add(world);let chunks=new Map<number,T.Group>();let featureMap=new Map<string,T.Group>();
@@ -27,7 +29,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
 
  for(const loc of LOCATIONS){if(Math.floor(loc.y/1000)!==chunk)continue;const landmark=new T.Group();landmark.position.set(loc.x*S,ground(loc.x,loc.y),-loc.y*S);
  const marker=new T.Group();marker.position.set(5,0,0);sign(marker,loc.name.toUpperCase());landmark.add(marker);
- if(loc.id==='summit'||loc.id==='village'){const count=loc.id==='village'?6:1;for(let i=0;i<count;i++){const c=new T.Group();c.position.set(-9-Math.floor(i/3)*10,0,(i%3-1)*12);cabin(c);landmark.add(c);}box(landmark,'#756747',0,.05,0,9,.1,9);}
+ if(loc.id==='summit'||loc.id==='village'){const count=loc.id==='village'?6:1;for(let i=0;i<count;i++){const c=new T.Group();const cx=-9-Math.floor(i/3)*10,cz=(i%3-1)*12;c.position.set(cx,ground(loc.x+cx/S,loc.y-cz/S)-ground(loc.x,loc.y),cz);cabin(c);landmark.add(c);}}
  if(loc.id==='park'){for(let i=0;i<3;i++){const gate=new T.Group();gate.position.set((i-1)*9,0,-10);box(gate,'#c69255',-3,2,0,.2,4,.2);box(gate,'#c69255',3,2,0,.2,4,.2);box(gate,'#364e49',0,4,0,6,.45,.2);landmark.add(gate);}}
  if(loc.id==='lake'){const lake=new T.Mesh(new T.CircleGeometry(14,24),new T.MeshStandardMaterial({color:'#7db6c7',roughness:.18,metalness:.2}));lake.rotation.x=-Math.PI/2;lake.position.y=.08;landmark.add(lake);for(let i=0;i<8;i++){const rock=mesh(sphereGeo,'#b7d4d7',landmark,[Math.sin(i)*15,.4,Math.cos(i)*15],[2,.8,1]);}}
  group.add(landmark);
@@ -35,59 +37,88 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  for(let i=0;i<2;i++){const yy=start+i*500;const tower=new T.Group();tower.position.set(24,ground(480,yy),-yy*S);box(tower,'#536860',0,5,0,.3,10,.3);box(tower,'#52645b',0,10,0,5,.25,.3);group.add(tower);const cable=box(group,'#586961',22,ground(480,yy)+10,-yy*S-12.5,.035,.035,25.3);cable.rotation.x=-Math.atan(.28);}
  for(let side of [-1,1])for(let i=0;i<5;i++){const peak=mesh(coneGeo,i%2?'#8da7a6':'#7c999a',group,[side*(70+hash(chunk+i)*40),ground(0,start+300)+8,-(start+i*210)*S],[25,35+hash(i+chunk)*25,28]);peak.castShadow=false;}
  world.add(group);return group;}
- function disposeGroup(group:T.Object3D){group.traverse(obj=>{if(obj instanceof T.Mesh&&![boxGeo,coneGeo,sphereGeo].includes(obj.geometry))obj.geometry.dispose();if(obj instanceof T.Mesh){const list=Array.isArray(obj.material)?obj.material:[obj.material];for(const m of list)if(![...materials.values()].includes(m as T.MeshStandardMaterial))m.dispose();}if(obj instanceof T.Sprite){obj.material.map?.dispose();obj.material.dispose();}});group.removeFromParent();}
+ function disposeGroup(group:T.Object3D){group.traverse(obj=>{if(obj instanceof T.Mesh&&!obj.geometry.userData.assetShared&&![boxGeo,coneGeo,sphereGeo].includes(obj.geometry))obj.geometry.dispose();if(obj instanceof T.Mesh){const list=Array.isArray(obj.material)?obj.material:[obj.material];for(const m of list)if(!m.userData.assetShared&&![...materials.values()].includes(m as T.MeshStandardMaterial))m.dispose();}if(obj instanceof T.SkinnedMesh)obj.skeleton.dispose();if(obj instanceof T.Sprite){obj.material.map?.dispose();obj.material.dispose();}});group.removeFromParent();}
  function makeFeature(f:Feature){const g=new T.Group();g.position.set(f.x*S,ground(f.x,f.y),-f.y*S);
- if(f.kind==='tree')tree(g,f.size);else if(f.kind==='rock')mesh(sphereGeo,'#7c918a',g,[0,.4,0],[1.1*f.size,.8*f.size,.9*f.size]);
+ if(f.kind==='tree')tree(g,f.size,f.seed);else if(f.kind==='rock')mesh(sphereGeo,'#7c918a',g,[0,.4,0],[1.1*f.size,.8*f.size,.9*f.size]);
  else if(f.kind==='ramp'){const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute([-1.6,0,2,1.6,0,2,1.6,1.25,-.8,-1.6,0,2,1.6,1.25,-.8,-1.6,1.25,-.8],3));geo.computeVertexNormals();const ramp=new T.Mesh(geo,mat('#b19160'));ramp.material.side=T.DoubleSide;ramp.receiveShadow=true;g.add(ramp);for(let i=0;i<7;i++){const z=2-i*.4;box(g,'#d4b77c',0,(2-z)/2.8*1.25+.02,z,3.2,.06,.065);}box(g,'#7b6142',-1.4,.55,-.6,.14,1.1,.14);box(g,'#7b6142',1.4,.55,-.6,.14,1.1,.14);}
  else if(f.kind==='rail'){box(g,'#edb957',0,.7,0,.2,.18,4);box(g,'#53665a',0,.35,-1.5,.15,.7,.15);box(g,'#53665a',0,.35,1.5,.15,.7,.15);}
  else{box(g,'#8c7652',0,1,0,.07,2,.07);box(g,f.seed%2?'#d89b5d':'#91ae92',.42,1.8,0,.85,.5,.04);}world.add(g);return g;}
- type Rider={root:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;scarf:T.Mesh;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear']};
+ type Rider={imported:ReturnType<ReturnType<typeof createModelAssets>['rider']>;root:T.Group;stunt:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;kneeL:T.Group;kneeR:T.Group;elbowL:T.Group;elbowR:T.Group;skiL:T.Group;skiR:T.Group;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear']};
+ const outfitAvatar=(o:Outfit)=>o.avatar||'explorer';
  function rider(o:Outfit,name?:string):Rider{
- const root=new T.Group(),body=new T.Group();root.add(body);
- // Adult proportions: small head, longer articulated legs, broad layered outerwear.
- const torso=mesh(new T.CylinderGeometry(.34,.28,.85,8),o.jacket,body,[0,1.55,0],[1,1,.72]);
- box(body,o.jacket,0,1.2,0,.6,.3,.39);box(body,'#253438',0,1.08,0,.62,.12,.4);
- const head=mesh(sphereGeo,'#c6a282',body,[0,2.18,-.01],[.21,.27,.21]);
- mesh(new T.SphereGeometry(.235,8,6),o.hat,body,[0,2.3,.015],[1,.68,1]);
- box(body,'#303d40',0,2.19,-.205,.4,.13,.055);box(body,'#a4c9ce',0,2.21,-.24,.33,.065,.018);
- box(body,'#2e393c',0,2.05,-.15,.32,.14,.14);
- box(body,o.jacket,0,1.94,.04,.45,.19,.38);
- const scarf=box(body,'#9c8f72',.14,1.91,.25,.16,.08,.45);
- function limb(px:number,py:number,c:string,length:number,leg=false){const pivot=new T.Group();pivot.position.set(px,py,0);body.add(pivot);
- mesh(new T.CylinderGeometry(leg?.15:.13,leg?.14:.1,length*.56,6),c,pivot,[0,-length*.25,0],[1,1,1]);
- const joint=new T.Group();joint.position.set(0,-length*.52,0);pivot.add(joint);joint.rotation.x=leg?-.24:-.22;
- mesh(new T.CylinderGeometry(leg?.14:.1,leg?.12:.1,length*.5,6),c,joint,[0,-length*.24,0],[1,1,1]);
- box(joint,leg?'#253238':'#313b3e',0,-length*.49,leg?-.07:0,leg?.24:.16,leg?.22:.19,leg?.42:.2);return pivot;}
- const armL=limb(-.4,1.88,o.jacket,.8),armR=limb(.4,1.88,o.jacket,.8),legL=limb(-.19,1.13,o.pants,1),legR=limb(.19,1.13,o.pants,1);
- if(o.gear==='snowboard'){const board=box(body,'#dad1af',0,.025,0,1.8,.065,.38);box(body,'#bb6647',.48,.065,0,.35,.01,.36);for(const xx of [-.9,.9]){const tip=box(body,'#344c4a',xx,.055,0,.18,.07,.36);tip.rotation.z=xx>0?.28:-.28;}body.rotation.y=.22;}
- else for(const xx of [-.19,.19]){box(body,'#d4ab63',xx,.03,-.12,.15,.065,1.95);box(body,'#344f4c',xx,.065,-.85,.15,.05,.3);}
- if(name){const tag=label(name);tag.scale.set(2.8,.53,1);tag.position.y=3;root.add(tag);}scene.add(root);return{root,body,armL,armR,legL,legR,scarf,signature:JSON.stringify(o),lastAngle:0,lastTime:0,lean:0,gear:o.gear};
+ const root=new T.Group(),stunt=new T.Group(),body=new T.Group();stunt.position.y=1.3;root.add(stunt);body.position.y=-1.3;stunt.add(body);
+ // Hand-built faceted silhouette: broad shoulders, narrow waist, long tapered legs.
+ const chest=mesh(new T.CylinderGeometry(.43,.285,.84,6),o.jacket,body,[0,1.77,0],[1,1,.61]);chest.rotation.y=Math.PI/6;
+ mesh(new T.CylinderGeometry(.29,.31,.18,6),o.jacket,body,[0,1.30,0],[1,1,.7]);
+ box(body,'#694334',0,1.22,0,.62,.08,.38);
+ mesh(new T.CylinderGeometry(.105,.12,.17,6),'#b99372',body,[0,2.22,0],[1,1,1]);
+ mesh(new T.SphereGeometry(1,6,4),'#bd9977',body,[0,2.43,0],[.185,.245,.18]);
+ box(body,'#30291f',-.069,2.46,-.162,.047,.025,.018);box(body,'#30291f',.069,2.46,-.162,.047,.025,.018);
+ mesh(new T.ConeGeometry(.06,.12,4),'#ad8765',body,[0,2.39,-.18],[.7,1,1]).rotation.x=-Math.PI/2;
+ mesh(new T.CylinderGeometry(.11,.045,.19,5),'#51442e',body,[0,2.30,-.09],[1,1,.8]);
+ mesh(new T.CylinderGeometry(.187,.187,.045,6),o.hat,body,[0,2.52,0],[1,1,1]);
+ function limb(px:number,py:number,c:string,length:number,leg=false){
+ const pivot=new T.Group();pivot.position.set(px,py,0);body.add(pivot);
+ const upper=mesh(new T.CylinderGeometry(leg?.19:.18,leg?.135:.115,length*.51,5),c,pivot,[0,-length*.245,0],[1,1,leg?.95:1]);upper.rotation.y=Math.PI/5;
+ if(!leg)mesh(new T.CylinderGeometry(.23,.18,.28,5),o.jacket,pivot,[0,-.09,0],[1,1,1]);
+ const joint=new T.Group();joint.position.set(0,-length*.49,0);pivot.add(joint);
+ mesh(new T.CylinderGeometry(leg?.15:.115,leg?.075:.08,length*.47,5),leg?c:'#bd9977',joint,[0,-length*.23,0],[1,1,1]);
+ if(!leg)mesh(new T.CylinderGeometry(.09,.085,.12,5),o.hat,joint,[0,-length*.41,0],[1,1,1]);
+ box(joint,leg?'#574331':'#b18c69',0,-length*.47,leg?-.075:0,leg?.22:.14,leg?.19:.17,leg?.39:.16);return {pivot,joint};}
+ const aL=limb(-.43,2.08,o.jacket,.94),aR=limb(.43,2.08,o.jacket,.94),lL=limb(-.20,1.25,o.pants,1.15,true),lR=limb(.20,1.25,o.pants,1.15,true);
+ const imported=outfitAvatar(o)==='explorer'?models.rider(o):null;if(imported){body.traverse(n=>{if(n instanceof T.Mesh)n.visible=false;});body.add(imported.root);}
+ const skiL=new T.Group(),skiR=new T.Group();body.add(skiL,skiR);
+ if(o.gear==='snowboard'){const equipment=models.snowboard();if(equipment){body.add(equipment);}else{box(body,'#dad1af',0,.025,0,1.9,.065,.40);box(body,o.hat,.48,.065,0,.35,.01,.38);for(const xx of [-.95,.95]){const tip=box(body,'#344c4a',xx,.055,0,.18,.07,.38);tip.rotation.z=xx>0?.28:-.28;}}}
+ else{
+ for(const [g,xx] of [[skiL,-.20],[skiR,.20]] as const){g.position.x=xx;const equipment=models.ski();if(equipment){g.add(equipment);}else{box(g,'#d4ab63',0,.03,-.12,.17,.065,2.1);box(g,o.hat,0,.07,-.9,.17,.05,.35);}}
+ for(const elbow of imported?[imported.handL,imported.handR]:[aL.joint,aR.joint]){const pole=new T.Group();pole.position.set(0,imported?0:-.44,0);if(imported)pole.scale.y=1.15;elbow.add(pole);box(pole,'#9baba2',0,-.58,0,.025,1.16,.025);box(pole,'#34443c',0,.04,0,.06,.18,.06);box(pole,'#34443c',0,-1.08,0,.15,.035,.15);}
+ }
+ if(name){const tag=label(name);tag.scale.set(2.8,.53,1);tag.position.y=3;root.add(tag);}scene.add(root);
+ return{imported,root,stunt,body,armL:aL.pivot,armR:aR.pivot,legL:lL.pivot,legR:lR.pivot,kneeL:lL.joint,kneeR:lR.joint,elbowL:aL.joint,elbowR:aR.joint,skiL,skiR,signature:JSON.stringify(o),lastAngle:0,lastTime:0,lean:0,gear:o.gear};
  }
  let local=rider({jacket:'#da744f',pants:'#374854',hat:'#e5b95f',gear:'snowboard'});const remotes=new Map<string,Rider>();
  const previewFloor=new T.Mesh(new T.CircleGeometry(30,48),mat('#40594e'));previewFloor.rotation.x=-Math.PI/2;previewFloor.receiveShadow=true;scene.add(previewFloor);
  const dust=new T.InstancedMesh(sphereGeo,mat('#f4f8e9'),110);dust.instanceMatrix.setUsage(T.DynamicDrawUsage);scene.add(dust);const dummy=new T.Object3D();
  const liftChairs:T.Group[]=[];for(let i=0;i<8;i++){const g=new T.Group();box(g,'#52665d',0,1,0,.06,2,.06);box(g,'#df9c62',0,0,0,1.6,.12,.8);box(g,'#596f65',0,.35,.35,1.6,.7,.08);scene.add(g);liftChairs.push(g);}
  let width=0,height=0,camReady=false,zone=-999;
- function pose(r:Rider,p:{x:number;y:number;z:number;angle:number;speed?:number},t:number,bail=0,spin=0,flip=0,grab=0){
+ function pose(r:Rider,p:{x:number;y:number;z:number;angle:number;speed?:number;pushPhase?:number;pushPower?:number},t:number,bail=0,spin=0,flip=0,grab=0){
  const dt=Math.max(.001,t-r.lastTime),delta=Math.atan2(Math.sin(p.angle-r.lastAngle),Math.cos(p.angle-r.lastAngle));
  const targetLean=r.lastTime?Math.max(-.32,Math.min(.32,-delta/dt*.16)):0;r.lean+=(targetLean-r.lean)*Math.min(1,dt*9);r.lastAngle=p.angle;r.lastTime=t;
- const airborne=p.z>0,moving=(p.speed||0)>10,board=r.gear==='snowboard';
+ const airborne=p.z>0,moving=(p.speed||0)>10,board=r.gear==='snowboard',power=airborne||bail?0:p.pushPower||0;
+ r.imported?.pose(p.pushPhase||0,power,airborne,grab,board);
+ const stride=Math.sin(p.pushPhase||0)*power,recovery=Math.max(0,Math.cos(p.pushPhase||0))*power;
  r.root.position.set(p.x*S,ground(p.x,p.y)+p.z*S+.1,-p.y*S);r.root.rotation.y=-p.angle;
- r.body.rotation.set(flip>0?flip:bail>0?Math.PI*.5:moving?-.08:0,spin+(board?Math.PI/2:0),r.lean);
- const bend=airborne?(grab?.65:.4):moving?.3:.12;
- r.body.position.y=-bend*.27+Math.sin(t*5)*.012;
- r.legL.rotation.x=bend+(moving?Math.sin(t*7)*.035:0);r.legR.rotation.x=bend-(moving?Math.sin(t*7)*.035:0);
- for(const leg of [r.legL,r.legR]){const knee=leg.children.find(c=>c instanceof T.Group);if(knee)knee.rotation.x=-bend*1.8;}
- r.armL.rotation.set(grab?-1.4:moving?-.35:.1,0,grab?-.15:board?-.6:-.22+r.lean);
- r.armR.rotation.set(grab?-.9:moving?-.35:-.1,0,grab?.25:board?.6:.22+r.lean);
- for(const arm of [r.armL,r.armR]){const elbow=arm.children.find(c=>c instanceof T.Group);if(elbow)elbow.rotation.x=grab?-.9:moving?-.6:-.2;}
- r.scarf.rotation.x=Math.sin(t*10)*.2;
+ // Flips rotate around the hips, with equipment carried through the motion.
+ r.stunt.rotation.set(bail?Math.PI*.5:flip,spin,r.lean);
+ r.body.rotation.set(board?0:-.10*(moving?1:0)-power*.12,board?Math.PI/2:0,board?-power*.16:0);
+ const bend=airborne?(grab?.70:.38):moving?.24:.10;
+ r.body.position.y=-1.3-bend*.13+Math.sin(t*5)*.008;
+ r.armL.rotation.set(grab?-1.2:moving?-.25:.04,0,grab?-.1:board?-.45:-.14);
+ r.armR.rotation.set(grab?-.85:moving?-.25:-.04,0,grab?.2:board?.45:.14);
+ r.elbowL.rotation.x=r.elbowR.rotation.x=grab?-.85:moving?-.4:-.12;
+ r.legL.position.set(-.20,1.25,0);r.legR.position.set(.20,1.25,0);
+ r.legL.rotation.set(bend,0,0);r.legR.rotation.set(bend,0,0);r.kneeL.rotation.x=r.kneeR.rotation.x=-bend*1.7;
+ r.skiL.position.z=r.skiR.position.z=0;
+ if(power>.001&&board){
+ // Front boot stays bound; rear boot steps beside the board and sweeps backward.
+ r.legL.position.x=-.20+stride*.32;r.legL.position.z=power*.37;r.legL.position.y+=recovery*.11;
+ r.legL.rotation.z=stride*.48;r.legL.rotation.x=.12;r.kneeL.rotation.x=-.22-recovery*.42;
+ r.armL.rotation.x=-stride*.45;r.armR.rotation.x=stride*.35;r.armL.rotation.z=-.55;r.armR.rotation.z=.45;
+ }else if(power>.001){
+ // Alternating ski glide and opposing pole plants.
+ r.legL.position.z=stride*.25;r.legR.position.z=-stride*.25;
+ r.legL.rotation.x=bend+stride*.18;r.legR.rotation.x=bend-stride*.18;
+ r.skiL.position.z=stride*.25;r.skiR.position.z=-stride*.25;
+ r.armL.rotation.x=-.20-stride*.85;r.armR.rotation.x=-.20+stride*.85;
+ r.elbowL.rotation.x=-.3-Math.max(0,stride)*.5;r.elbowR.rotation.x=-.3-Math.max(0,-stride)*.5;
  }
- function draw(f:Frame){const w=canvas.clientWidth,h=canvas.clientHeight;if(w!==width||h!==height){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+ }
+ function draw(f:Frame){if(assetRevision!==seenAssetRevision){seenAssetRevision=assetRevision;for(const g of featureMap.values())disposeGroup(g);featureMap.clear();local.signature='';for(const r of remotes.values())r.signature='';}
+ const w=canvas.clientWidth,h=canvas.clientHeight;if(w!==width||h!==height){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
  const chunk=Math.floor(f.y/1000);if(chunk!==zone){zone=chunk;for(let n=chunk-2;n<=chunk+4;n++)if(!chunks.has(n))chunks.set(n,makeTerrain(n));for(const [n,g]of chunks)if(n<chunk-2||n>chunk+4){disposeGroup(g);chunks.delete(n);}}
  const ids=new Set(f.features.map(p=>p.id));for(const feature of f.features)if(!featureMap.has(feature.id))featureMap.set(feature.id,makeFeature(feature));for(const[id,g]of featureMap)if(!ids.has(id)){disposeGroup(g);featureMap.delete(id);}
- if(local.signature!==JSON.stringify(f.outfit)){disposeGroup(local.root);local=rider(f.outfit);}if(f.view==='wardrobe'||f.view==='shop')pose(local,{...f,z:0,angle:0},f.clock);else pose(local,f,f.clock,f.bail,f.spin,f.flip,f.grab);
- for(const peer of f.peers){let r=remotes.get(peer.id);if(!r||r.signature!==JSON.stringify(peer.outfit)){if(r)disposeGroup(r.root);r=rider(peer.outfit,peer.name);remotes.set(peer.id,r);}pose(r,peer,f.clock);}
+ if(local.signature!==JSON.stringify(f.outfit)){disposeGroup(local.root);local=rider(f.outfit);}if(f.view==='wardrobe'||f.view==='shop')pose(local,{...f,z:0,angle:f.outfit.gear==='snowboard'?Math.PI/2:0,speed:0,pushPower:0},f.clock);else pose(local,f,f.clock,f.bail,f.spin,f.flip,f.grab);
+ for(const peer of f.peers){let r=remotes.get(peer.id);if(!r||r.signature!==JSON.stringify(peer.outfit)){if(r)disposeGroup(r.root);r=rider(peer.outfit,peer.name);remotes.set(peer.id,r);}pose(r,{...peer,pushPhase:peer.motion?.pushPhase,pushPower:peer.motion?.pushPower},f.clock,0,peer.motion?.spin||0,peer.motion?.flip||0,peer.motion?.grab||0);}
  for(const[id,r]of remotes)if(!f.peers.some(p=>p.id===id)){disposeGroup(r.root);remotes.delete(id);}
  const count=Math.min(f.particles.length,110);dust.count=count;for(let i=0;i<count;i++){const p=f.particles[i];dummy.position.set(p.x*S,ground(p.x,p.y)+p.z*S+.08,-p.y*S);dummy.scale.setScalar(p.size*.025);dummy.updateMatrix();dust.setMatrixAt(i,dummy.matrix);}dust.instanceMatrix.needsUpdate=true;
 
@@ -103,5 +134,5 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  sun.position.set(f.x*S+25,py+45,-f.y*S+15);sun.target.position.set(f.x*S,py,-f.y*S-15);
  liftChairs.forEach((g,i)=>{const yy=f.y-500+((i*250+f.clock*45)%2000);g.position.set(22,ground(480,yy)+8,-yy*S);g.rotation.z=Math.sin(f.clock+i)*.035;});
  renderer.render(scene,camera);}
- return{draw,destroy(){renderer.dispose();scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();if(o instanceof T.Sprite){o.material.map?.dispose();o.material.dispose();}});materials.forEach(m=>m.dispose());}};
+ return{draw,destroy(){models.dispose();renderer.dispose();scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();if(o instanceof T.Sprite){o.material.map?.dispose();o.material.dispose();}});materials.forEach(m=>m.dispose());}};
 }

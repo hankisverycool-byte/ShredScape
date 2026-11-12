@@ -8,8 +8,9 @@ const PRESENCE_MS = 10_000;
 const ROOM_LIFETIME_MS = 6 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 4096;
 
-type Outfit = { jacket: string; pants: string; hat: string; gear: "skis" | "snowboard" };
-type State = { x: number; y: number; z: number; angle: number; score: number; outfit: Outfit };
+type Outfit = { jacket: string; pants: string; hat: string; gear: "skis" | "snowboard"; avatar?: "explorer" | "classic" };
+type Motion = { spin:number; flip:number; pushPhase:number; pushPower:number; grab:number };
+type State = { x: number; y: number; z: number; angle: number; score: number; outfit: Outfit; motion:Motion };
 type PlayerRow = { id: string; name: string; outfit: string; x: number; y: number; z: number; angle: number; score: number };
 
 class HttpError extends Error {
@@ -34,7 +35,18 @@ function outfit(value: unknown): Outfit {
     }
   }
   if (data.gear !== "skis" && data.gear !== "snowboard") throw new HttpError(400, "Choose skis or a snowboard.");
-  return { jacket: data.jacket as string, pants: data.pants as string, hat: data.hat as string, gear: data.gear };
+  return { jacket: data.jacket as string, pants: data.pants as string, hat: data.hat as string, gear: data.gear, ...(data.avatar === "classic" || data.avatar === "explorer" ? {avatar:data.avatar} : {}) };
+}
+
+function riderMotion(value: unknown): Motion {
+  const data = value === undefined ? {} : object(value);
+  const result: Motion = {spin:0,flip:0,pushPhase:0,pushPower:0,grab:0};
+  for (const key of Object.keys(result) as (keyof Motion)[]) {
+    const v = data[key] ?? 0;
+    if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v)>1e6) throw new HttpError(400,'Invalid rider animation.');
+    result[key] = key==='pushPower'||key==='grab' ? Math.max(0,Math.min(1,v)) : v;
+  }
+  return result;
 }
 
 function playerName(value: unknown): string {
@@ -61,7 +73,7 @@ function playerState(value: unknown): State {
     }
   }
   if ((data.score as number) < 0) throw new HttpError(400, "Invalid rider score.");
-  return { x: data.x as number, y: data.y as number, z: data.z as number, angle: data.angle as number, score: Math.floor(data.score as number), outfit: outfit(data.outfit) };
+  return { x: data.x as number, y: data.y as number, z: data.z as number, angle: data.angle as number, score: Math.floor(data.score as number), outfit: outfit(data.outfit), motion:riderMotion(data.motion) };
 }
 
 function randomCode(): string {
@@ -165,7 +177,7 @@ export async function POST(request: Request) {
       WHERE id = ? AND room_code = ? AND token_hash = ?
       AND EXISTS (SELECT 1 FROM rooms WHERE code = ? AND expires_at > ?)
       AND (last_seen >= ? OR (SELECT COUNT(*) FROM players WHERE room_code = ? AND last_seen >= ?) < ?)`)
-      .bind(state.x, state.y, state.z, state.angle, state.score, JSON.stringify(state.outfit), now,
+      .bind(state.x, state.y, state.z, state.angle, state.score, JSON.stringify({...state.outfit,_motion:state.motion}), now,
         data.id, code, hash, code, now, now - PRESENCE_MS, code, now - PRESENCE_MS, CAPACITY).run();
     if (updated.meta.changes !== 1) {
       const session = await db.prepare("SELECT p.id FROM players p JOIN rooms r ON r.code = p.room_code WHERE p.id = ? AND p.room_code = ? AND p.token_hash = ? AND r.expires_at > ?")
@@ -175,7 +187,7 @@ export async function POST(request: Request) {
     }
     const result = await db.prepare("SELECT id, name, outfit, x, y, z, angle, score FROM players WHERE room_code = ? AND last_seen >= ? ORDER BY score DESC, id ASC LIMIT ?")
       .bind(code, now - PRESENCE_MS, CAPACITY).all<PlayerRow>();
-    return reply({ code, players: result.results.map((player) => ({ ...player, outfit: JSON.parse(player.outfit) })), serverTime: now });
+    return reply({ code, players: result.results.map((player) => ({ ...player, outfit: outfit(JSON.parse(player.outfit)), motion:riderMotion(JSON.parse(player.outfit)._motion) })), serverTime: now });
   } catch (error) {
     if (error instanceof HttpError) return reply({ error: error.message }, error.status);
     console.error("Room service failed", error instanceof Error ? error.message : "unknown error");

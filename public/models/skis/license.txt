@@ -1,0 +1,11 @@
+Model Information:
+* title:	Low-Poly Freeride Skis
+* source:	https://sketchfab.com/3d-models/low-poly-freeride-skis-8b27a5ff5c6f436ab18d6d1d5862aeb5
+* author:	Romainhj (https://sketchfab.com/Romainhj)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Low-Poly Freeride Skis" (https://sketchfab.com/3d-models/low-poly-freeride-skis-8b27a5ff5c6f436ab18d6d1d5862aeb5) by Romainhj (https://sketchfab.com/Romainhj) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
