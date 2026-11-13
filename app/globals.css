@@ -45,3 +45,23 @@ html,body{font-family:var(--sans)}
 @media(max-height:750px) and (min-width:651px){.start-copy{padding:22px 26px}.start-copy h1{font-size:56px}.main-nav button{padding:12px 14px}}
 .start-copy h1{font-size:clamp(44px,4.4vw,68px);letter-spacing:-2px}
 .world-map svg rect{fill:#1d362c}
+/* In-game HUD: one font, readable sizes, dark glass panels, nothing over the rider. */
+.hud-menu,.hud-map,.room-indicator{font:600 12px var(--sans);letter-spacing:1px;border-radius:6px;background:#10221bcc;backdrop-filter:blur(6px)}
+.region{font:700 20px var(--sans);letter-spacing:-.2px}.region small{font:600 10px var(--sans);letter-spacing:2px}
+.score{top:84px;left:30px;padding:14px 18px;background:#10221bb3;border:1px solid var(--line);border-radius:8px;backdrop-filter:blur(6px);text-shadow:none}
+.score small{font:600 10px var(--sans);letter-spacing:2px;color:var(--muted)}.score strong{font:800 38px/1.15 var(--sans);letter-spacing:-1px}.score>span{font:500 12px var(--sans);color:var(--muted)}
+.speed{padding:10px 16px;background:#10221bb3;border:1px solid var(--line);border-radius:8px;text-shadow:none;backdrop-filter:blur(6px)}.speed strong{font:800 40px var(--sans);letter-spacing:-1px}.speed span{font:600 11px var(--sans);letter-spacing:2px;color:var(--muted)}
+.controls-hint{font:500 12px var(--sans);background:#10221b99;padding:10px 16px;border-radius:8px;text-shadow:none}.controls-hint span{margin:4px 0}.controls-hint kbd{font:600 11px var(--sans)}
+.trick-display{bottom:auto;top:17%;padding:14px 26px;background:#10221bb3;border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px);text-shadow:none;min-width:300px}
+.trick-display small{font:700 11px var(--sans);letter-spacing:2px}.trick-display h2{font:800 30px var(--sans);letter-spacing:-.5px;margin:6px 0}.trick-display strong{font:800 34px var(--sans)}
+.trick-display.wipeout{background:#5e2a1fd9;border-color:#e3937066}.wipeout h2{color:#ffd7c4;font-size:24px}
+.air-readout{font:700 13px var(--sans)}
+.minimap{position:absolute;top:84px;right:30px;width:150px;height:150px;border-radius:12px;border:2px solid #f1eee4cc;box-shadow:0 6px 20px #0006;pointer-events:none}
+/* Full map */
+.world-map2{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#1d362c;height:calc(100vh - 330px);min-height:320px;display:flex;justify-content:center}
+.world-map2 svg{display:block;height:100%;width:auto;max-width:100%}
+.world-map2 text{font:700 22px var(--sans);fill:#17291f;paint-order:stroke;stroke:#ffffffe6;stroke-width:5px}
+.map-pin{cursor:pointer}.map-pin:hover circle{stroke:#ee7f4a}
+.map-north{position:absolute;top:14px;right:16px;font:700 13px var(--sans);color:#17291f;background:#ffffffd9;padding:6px 10px;border-radius:6px}.map-north small{font-weight:500;margin-left:6px}
+@media(max-width:650px){.score{top:66px;left:14px;padding:10px 14px}.score strong{font-size:28px}.minimap{top:66px;right:14px;width:104px;height:104px}.trick-display{top:22%;min-width:0;width:88%}.trick-display h2{font-size:22px}.speed{padding:8px 12px}.speed strong{font-size:30px}.world-map2,.world-map2 svg{max-height:60vh}}
+@media(max-width:650px){.mobile-controls button{font:700 12px var(--sans);border-radius:8px;flex:1;padding:16px 4px}}

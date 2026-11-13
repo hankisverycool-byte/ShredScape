@@ -49,15 +49,23 @@ export function createModelAssets(onReady:()=>void){
     if(original.name==='Object_6'){material.color.set(outfit.hat);}
     const m=new T.SkinnedMesh(geo,material);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;root.add(m);m.bind(skeleton);
    }
-   return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean){
+   return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean,extra=0,moving=false){
     // Skis: double-pole push. Both arms swing together, legs stay parallel and fold on the push.
-    const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?(grab?.6:.3):board?.12:.26+Math.max(0,-reach)*.3;
+    const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?.1+extra*(grab?.5:.22):(board?(moving?.3:.12):.26+Math.max(0,-reach)*.3)+extra*.5;
     if(board){bones[1].rotation.set(grab?-1.1:-stride*.75,0,.42);bones[3].rotation.set(grab?-.8:stride*.75,0,-.42);}
     else{const arm=grab?-1:-.35-reach*.9;bones[1].rotation.set(arm,0,.3);bones[3].rotation.set(arm,0,-.3);}
     bones[2].rotation.x=bones[4].rotation.x=grab?-.7:-.12;
-    bones[5].rotation.set(crouch,0,board?stride*.40:0);bones[7].rotation.x=crouch;
+    // Snowboard: knees open a little for a wider, athletic stance.
+    bones[5].rotation.set(crouch,0,board?stride*.40+.12:0);bones[7].rotation.set(crouch,0,board?-.12:0);
     bones[5].position.z=board?power*.32:0;bones[7].position.z=0;
     bones[6].rotation.x=-crouch*1.6-(board?Math.max(0,Math.cos(phase))*power*.35:0);bones[8].rotation.x=-crouch*1.6;
+   },
+   // Limp, flailing limbs while tumbling. a = flail strength (decays), k = 1 until getting back up.
+   flail(e:number,a:number,k:number,seed:number){const w=(f:number,ph:number)=>Math.sin(e*f+seed+ph);
+    bones[1].rotation.set((-.6+w(11,0)*1.4*a)*k,0,(.42+.9+w(7,1)*.6*a)*k+.42*(1-k));bones[3].rotation.set((-.6+w(10,2)*1.4*a)*k,0,(-.42-.9+w(8,3)*.6*a)*k-.42*(1-k));
+    bones[2].rotation.x=(-.4-Math.abs(w(13,4))*1.1*a)*k-.12*(1-k);bones[4].rotation.x=(-.4-Math.abs(w(12,5))*1.1*a)*k-.12*(1-k);
+    bones[5].rotation.set((.35+w(9,6)*1*a)*k,0,.2*k);bones[7].rotation.set((.2+w(8,7)*1*a)*k,0,-.2*k);
+    bones[6].rotation.x=(-.5-Math.abs(w(10,8))*1*a)*k;bones[8].rotation.x=(-.3-Math.abs(w(11,9))*1*a)*k;
    }};
   },
   dispose(){disposed=true;for(const r of resources)r.dispose();resources.clear();}
