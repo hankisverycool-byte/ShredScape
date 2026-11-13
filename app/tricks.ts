@@ -10,7 +10,8 @@ export function landingResult(t:TrickState){
  const spin=Math.abs(t.spin),flip=Math.abs(t.flip),turn=Math.PI*2;
  const spinTurns=Math.round(spin/Math.PI),flipTurns=Math.round(flip/turn);
  const spinError=Math.abs(spin-spinTurns*Math.PI),flipError=Math.abs(flip-flipTurns*turn);
- const clean=spinError<.42&&flipError<.48;
+ // Forgiving: land within ~57° of straight/switch and ~63° of a full flip.
+ const clean=spinError<1&&flipError<1.1;
  const names:string[]=[];let base=0;
  if(spinTurns){names.push((spinTurns*180)+'°');base+=spinTurns*180;}
  if(flipTurns){const direction=t.flip<0?'Frontflip':'Backflip';names.push((flipTurns>1?flipTurns+'× ':'')+direction);base+=flipTurns*500;}

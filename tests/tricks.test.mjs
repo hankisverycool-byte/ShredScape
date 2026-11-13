@@ -27,3 +27,7 @@ test('pop stays below two metres, ramps below 3.2 metres',()=>{
  assert.ok(JUMP.ramp*JUMP.ramp/(2*JUMP.gravity)*.05<3.2);
  assert.ok(JUMP.ramp>JUMP.pop);
 });
+test('sloppy but close landings still count',()=>{
+ assert.equal(landingResult({...emptyTrick(),spin:Math.PI+.8}).clean,true);
+ assert.equal(landingResult({...emptyTrick(),flip:2*Math.PI-.9}).clean,true);
+});
