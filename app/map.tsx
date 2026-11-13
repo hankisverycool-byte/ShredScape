@@ -1,11 +1,10 @@
 "use client";
 import {useEffect,useRef,useState} from 'react';
-import {BOUNDS,LOCATIONS,groundHeight,featuresNear,trailCenter,type Feature} from './world';
+import {BOUNDS,LOCATIONS,groundHeight,featuresNear,onTrail,type Feature} from './world';
 
 // Top-down map drawn from the same terrain, trails and features the game uses. Rendered once, then cached.
 const PX=.12,W=Math.round((BOUNDS.maxX-BOUNDS.minX)*PX),H=Math.round((BOUNDS.maxY-BOUNDS.minY)*PX);
 const toMap=(x:number,y:number)=>[(x-BOUNDS.minX)*PX,(y-BOUNDS.minY)*PX];
-const onTrail=(x:number,y:number)=>Math.abs(x-trailCenter(y))<235||Math.abs(x-950)<210||Math.abs(x+800)<170;
 let cache:HTMLCanvasElement|null=null;
 function mapImage(){
  if(cache)return cache;

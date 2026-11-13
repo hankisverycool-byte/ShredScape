@@ -65,3 +65,4 @@ html,body{font-family:var(--sans)}
 .map-north{position:absolute;top:14px;right:16px;font:700 13px var(--sans);color:#17291f;background:#ffffffd9;padding:6px 10px;border-radius:6px}.map-north small{font-weight:500;margin-left:6px}
 @media(max-width:650px){.score{top:66px;left:14px;padding:10px 14px}.score strong{font-size:28px}.minimap{top:66px;right:14px;width:104px;height:104px}.trick-display{top:22%;min-width:0;width:88%}.trick-display h2{font-size:22px}.speed{padding:8px 12px}.speed strong{font-size:30px}.world-map2,.world-map2 svg{max-height:60vh}}
 @media(max-width:650px){.mobile-controls button{font:700 12px var(--sans);border-radius:8px;flex:1;padding:16px 4px}}
+.snow-chip{font:700 10px var(--sans);letter-spacing:1.5px;text-transform:uppercase;font-style:normal;color:#13261e;background:#d8e6df;padding:4px 8px;border-radius:4px;margin-left:6px;align-self:center}.snow-chip.skidding{background:#f3c29c}

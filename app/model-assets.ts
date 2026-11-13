@@ -49,7 +49,7 @@ export function createModelAssets(onReady:()=>void){
     if(original.name==='Object_6'){material.color.set(outfit.hat);}
     const m=new T.SkinnedMesh(geo,material);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;root.add(m);m.bind(skeleton);
    }
-   return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean,extra=0,moving=false){
+   return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean,extra=0,moving=false,edge=0){
     // Skis: double-pole push. Both arms swing together, legs stay parallel and fold on the push.
     const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?.1+extra*(grab?.5:.22):(board?(moving?.3:.12):.26+Math.max(0,-reach)*.3)+extra*.5;
     if(board){bones[1].rotation.set(grab?-1.1:-stride*.75,0,.42);bones[3].rotation.set(grab?-.8:stride*.75,0,-.42);}
@@ -57,6 +57,8 @@ export function createModelAssets(onReady:()=>void){
     bones[2].rotation.x=bones[4].rotation.x=grab?-.7:-.12;
     // Snowboard: knees open a little for a wider, athletic stance.
     bones[5].rotation.set(crouch,0,board?stride*.40+.12:0);bones[7].rotation.set(crouch,0,board?-.12:0);
+    // Skis: outside leg long and loaded, inside leg folded and light.
+    if(!board&&!air&&edge){const e=Math.abs(edge),[inL,outL,inK]=edge>0?[5,7,6]:[7,5,8];bones[inL].rotation.x+=.3*e;bones[outL].rotation.x-=.1*e;bones[inK].rotation.x-=.45*e;}
     bones[5].position.z=board?power*.32:0;bones[7].position.z=0;
     bones[6].rotation.x=-crouch*1.6-(board?Math.max(0,Math.cos(phase))*power*.35:0);bones[8].rotation.x=-crouch*1.6;
    },
