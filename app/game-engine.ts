@@ -31,7 +31,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  const steer=Number(pressed.has('right'))-Number(pressed.has('left'));const wasAirborne=z>0;if(!wasAirborne)angle=advanceHeading(angle,steer,dt,settings.sensitivity);
  // Push and gravity act along heading. Holding brake comes to a complete stop.
  const slope=(groundHeight(x+Math.sin(angle)*30,y+Math.cos(angle)*30)-groundHeight(x,y))/1.5;
- const pushing=!wasAirborne&&pressed.has('up');pushPower+=((pushing?1:0)-pushPower)*Math.min(1,dt*12);if(pushPower>.01)pushPhase+=dt*(outfit.gear==='skis'?7.5:6);const push=pushing?145:0;const downhill=-slope*95;
+ const pushing=!wasAirborne&&pressed.has('up');pushPower+=((pushing?1:0)-pushPower)*Math.min(1,dt*12);if(pushPower>.01)pushPhase+=dt*(outfit.gear==='skis'?4.5:6);const push=pushing?145:0;const downhill=-slope*95;
  const drag=pressed.has('down')?260:24+Math.abs(speed)*.13;
  if(!wasAirborne)speed=Math.max(0,Math.min(pressed.has('boost')?420:310,speed+(push+downhill-drag)*dt));
  if(!pressed.has('up')&&speed<3)speed=0;

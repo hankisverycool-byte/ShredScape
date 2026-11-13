@@ -90,7 +90,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  r.root.position.set(p.x*S,ground(p.x,p.y)+p.z*S+.1,-p.y*S);r.root.rotation.y=-p.angle;
  // Flips rotate around the hips, with equipment carried through the motion.
  r.stunt.rotation.set(bail?Math.PI*.5:flip,spin,r.lean);
- r.body.rotation.set(board?0:-.10*(moving?1:0)-power*.12,board?Math.PI/2:0,board?-power*.16:0);
+ r.body.rotation.set(board?0:-.10*(moving?1:0)-power*.12-Math.max(0,-Math.cos(p.pushPhase||0))*power*.3,board?Math.PI/2:0,board?-power*.16:0);
  const bend=airborne?(grab?.70:.38):moving?.24:.10;
  r.body.position.y=-1.3-bend*.13+Math.sin(t*5)*.008;
  r.armL.rotation.set(grab?-1.2:moving?-.25:.04,0,grab?-.1:board?-.45:-.14);
@@ -105,12 +105,10 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  r.legL.rotation.z=stride*.48;r.legL.rotation.x=.12;r.kneeL.rotation.x=-.22-recovery*.42;
  r.armL.rotation.x=-stride*.45;r.armR.rotation.x=stride*.35;r.armL.rotation.z=-.55;r.armR.rotation.z=.45;
  }else if(power>.001){
- // Alternating ski glide and opposing pole plants.
- r.legL.position.z=stride*.25;r.legR.position.z=-stride*.25;
- r.legL.rotation.x=bend+stride*.18;r.legR.rotation.x=bend-stride*.18;
- r.skiL.position.z=stride*.25;r.skiR.position.z=-stride*.25;
- r.armL.rotation.x=-.20-stride*.85;r.armR.rotation.x=-.20+stride*.85;
- r.elbowL.rotation.x=-.3-Math.max(0,stride)*.5;r.elbowR.rotation.x=-.3-Math.max(0,-stride)*.5;
+ // Double-pole: skis stay parallel, both poles plant together, legs fold on the push.
+ const reach=Math.cos(p.pushPhase||0)*power;
+ r.legL.rotation.x=r.legR.rotation.x=bend+.1+Math.max(0,-reach)*.25;r.kneeL.rotation.x=r.kneeR.rotation.x=-(bend+.1)*1.7;
+ r.armL.rotation.x=r.armR.rotation.x=-.4-reach*.9;r.elbowL.rotation.x=r.elbowR.rotation.x=-.3;
  }
  }
  function draw(f:Frame){if(assetRevision!==seenAssetRevision){seenAssetRevision=assetRevision;for(const g of featureMap.values())disposeGroup(g);featureMap.clear();local.signature='';for(const r of remotes.values())r.signature='';}

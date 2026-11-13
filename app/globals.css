@@ -5,3 +5,43 @@
 @media(max-height:750px) and (min-width:651px){.topbar{height:75px}.start-page{top:75px;padding-top:15px}.start-copy h1{font-size:64px;margin:15px 0}.start-copy p{font-size:11px;margin:10px 0}.play-button{margin-top:18px;padding:14px 18px}.main-nav button{padding:13px 0}.start-bottom{margin-top:20px}.wardrobe-page{top:75px;padding-top:10px}.wardrobe-card{padding:20px}.wardrobe-card h1{font-size:30px}.wardrobe-card .field-label{margin-top:15px}.wardrobe-card .gear-tabs{margin:14px 0}.color-picker{margin:12px 0}.collection{max-height:75px}.menu-sheet{top:75px}}
 
 .air-readout{display:flex;justify-content:center;gap:18px;margin:10px 0;font:10px monospace;color:#f3b292}.air-readout.aligned{color:#bfe3a3}
+/* Menu refresh: one type family, readable sizes, solid panels so text never sits on bright snow. */
+:root{--panel:#10221bf2;--panel-2:#1a3128;--line:#9fb39a40;--ink:#f1eee4;--muted:#b8c7b5;--accent:#edb78c;--sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+html,body{font-family:var(--sans)}
+.eyebrow,.field-label,.color-picker>label,.wardrobe-card h3,.destinations small,.jacket-display small,.divider{font-size:11px;letter-spacing:2px}
+.section-title h1,.wardrobe-card h1,.settings-card h2,.item-info h2,.destinations h2,.empty-state h3{font-family:var(--sans);font-weight:800;letter-spacing:-.5px}
+.section-title p,.wardrobe-card>p,.guide p,.friends-columns p,.item-info p,.destinations p,.empty-state p{font-size:14px;color:var(--muted);line-height:1.6}
+.setting,.slider,.friend-row,.collection button{font-size:14px}
+.setting small,.friend-row small{font-size:12px}
+.toggle,.gear-tabs button,.buy,.outline,.hud-menu,.hud-map,.room-indicator,.friend-row button,.menu-footer button{font-size:12px}
+/* Start: a real panel behind the menu, big tap targets. */
+.start-copy{max-width:500px;background:linear-gradient(180deg,#0f211bd9,#0f211bf2);border:1px solid var(--line);padding:32px;backdrop-filter:blur(8px)}
+.start-copy h1{margin:16px 0}
+.start-copy p{font-size:15px;color:var(--muted)}
+.play-button{font-size:15px;padding:20px 22px;border-radius:4px}
+.main-nav{grid-template-columns:1fr 1fr;gap:10px}
+.main-nav button{border:1px solid var(--line);background:#ffffff0a;border-radius:4px;padding:16px;font-size:14px;letter-spacing:.5px;align-items:center}
+.main-nav button:hover{background:#ffffff18;color:var(--ink);border-color:var(--accent)}
+.main-nav button:last-child{grid-column:1/-1}
+.main-nav button span{font-size:11px}
+.start-bottom{display:none}
+/* Sub-pages: solid background, rounded cards. */
+.menu-sheet{background:var(--panel)}
+.settings-card,.shop-item,.destinations button,.wardrobe-card{background:var(--panel-2);border-color:var(--line);border-radius:6px}
+.play-button,.outline,.buy,.gear-tabs,.toggle,input,select{border-radius:4px}
+.gear-tabs{overflow:hidden}
+.world-map{background:#1d362c;border-radius:6px;overflow:hidden}
+.world-map svg rect[fill^="url"]{display:none}
+.menu-footer{font-size:11px}
+@media(max-width:650px){
+ .start-copy{padding:22px}
+ .start-copy h1{font-size:46px}
+ .main-nav{grid-template-columns:1fr}
+ .main-nav button{font-size:14px;padding:15px}
+ .item-info p{font-size:13px}
+ .buy{font-size:11px}
+ .jacket-display small{font-size:9px}
+}
+@media(max-height:750px) and (min-width:651px){.start-copy{padding:22px 26px}.start-copy h1{font-size:56px}.main-nav button{padding:12px 14px}}
+.start-copy h1{font-size:clamp(44px,4.4vw,68px);letter-spacing:-2px}
+.world-map svg rect{fill:#1d362c}

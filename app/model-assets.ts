@@ -12,7 +12,8 @@ export function createModelAssets(onReady:()=>void){
  async function load(url:string,prepare:(scene:T.Group)=>void){try{const gltf=await loader.loadAsync(url);if(disposed){gltf.scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});return;}gltf.scene.updateMatrixWorld(true);track(gltf.scene);prepare(gltf.scene);onReady();}catch(e){console.warn('Model could not load; using built-in fallback.',url,e);}}
  void load('/models/snowy-trees.glb',scene=>{scene.traverse(o=>{if(o instanceof T.Mesh){const g=new T.Group();g.add(bake(o));trees.push(fit(g,5,'y'));}});});
  void load('/models/eli-snowboard.glb',scene=>{const g=new T.Group();scene.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o));});board=fit(g,2.2,'x');});
- void load('/models/skis/scene.gltf',scene=>{const g=new T.Group();scene.getObjectByName('Ski_L')?.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o,new T.Matrix4()));});skis=fit(g,2.2,'z');});
+ void load('/models/skis/scene.gltf',scene=>{const g=new T.Group();// Raw ski mesh has bindings on -Y; flip so they face up and the tip points forward (-Z).
+ scene.getObjectByName('Ski_L')?.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o,new T.Matrix4().makeRotationX(Math.PI)));});skis=fit(g,2.2,'z');});
  void load('/models/rider.glb',scene=>{
   const g=new T.Group();scene.traverse(o=>{if(o instanceof T.Mesh&&['Object_4','Object_6','Object_8','Object_10','Object_12'].includes(o.name)){const m=bake(o);m.name=o.name;g.add(m);}});
   person=fit(g,2.65,'y');
@@ -49,11 +50,13 @@ export function createModelAssets(onReady:()=>void){
     const m=new T.SkinnedMesh(geo,material);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;root.add(m);m.bind(skeleton);
    }
    return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean){
-    const stride=Math.sin(phase)*power,crouch=air?(grab?.6:.3):.12;
-    bones[1].rotation.set(grab?-1.1:-stride*.75,0,.42);bones[3].rotation.set(grab?-.8:stride*.75,0,-.42);
+    // Skis: double-pole push. Both arms swing together, legs stay parallel and fold on the push.
+    const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?(grab?.6:.3):board?.12:.26+Math.max(0,-reach)*.3;
+    if(board){bones[1].rotation.set(grab?-1.1:-stride*.75,0,.42);bones[3].rotation.set(grab?-.8:stride*.75,0,-.42);}
+    else{const arm=grab?-1:-.35-reach*.9;bones[1].rotation.set(arm,0,.3);bones[3].rotation.set(arm,0,-.3);}
     bones[2].rotation.x=bones[4].rotation.x=grab?-.7:-.12;
-    bones[5].rotation.set(crouch+(!board?stride*.25:0),0,board?stride*.40:0);bones[7].rotation.x=crouch-(!board?stride*.25:0);
-    bones[5].position.z=board?power*.32:stride*.18;bones[7].position.z=board?0:-stride*.18;
+    bones[5].rotation.set(crouch,0,board?stride*.40:0);bones[7].rotation.x=crouch;
+    bones[5].position.z=board?power*.32:0;bones[7].position.z=0;
     bones[6].rotation.x=-crouch*1.6-(board?Math.max(0,Math.cos(phase))*power*.35:0);bones[8].rotation.x=-crouch*1.6;
    }};
   },
