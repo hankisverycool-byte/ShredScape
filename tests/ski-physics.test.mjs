@@ -30,3 +30,18 @@ test('ice grips less than groomed snow',()=>{
  const g=stepSki({vx:0,vy:150,angle:.4},{...base,gradY:0},.1),i=stepSki({vx:0,vy:150,angle:.4},{...base,gradY:0,snow:'ice'},.1);
  assert.ok(Math.abs(i.angle-i.course)>Math.abs(g.angle-g.course));
 });
+test('switch: skiing backwards downhill speeds up and carves like regular',()=>{
+ const sw=run({vx:0,vy:20,angle:Math.PI},base,2),reg=run({vx:0,vy:20,angle:0},base,2);
+ assert.ok(Math.abs(sw.speed-reg.speed)<1);assert.equal(sw.fakie,true);
+ const carve=stepSki({vx:0,vy:150,angle:Math.PI+.08},{...base,gradY:0},.05);
+ assert.ok(carve.carve>.9&&carve.speed>147);
+});
+test('switch: hockey stop works backwards too',()=>{
+ const s=run({vx:0,vy:200,angle:Math.PI},{...base,gradY:0,brake:true},1.2);
+ assert.ok(s.speed<20);
+});
+test('regular to switch pivot keeps momentum, no instant 180',()=>{
+ const flat={...base,gradY:0,steer:1,pivot:true};let s={vx:0,vy:150,angle:0},maxStep=0,prev=0;
+ for(let i=0;i<200&&!(s.fakie&&Math.cos(s.angle-Math.atan2(s.vx,s.vy))<-.95);i++){s=stepSki(s,flat,.01);maxStep=Math.max(maxStep,Math.abs(s.angle-prev));prev=s.angle;}
+ assert.equal(s.fakie,true);assert.ok(maxStep<.06);assert.ok(s.speed>60,'kept '+s.speed.toFixed(0));
+});

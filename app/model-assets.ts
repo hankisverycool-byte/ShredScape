@@ -1,6 +1,9 @@
 import * as T from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type {Outfit} from './game-engine';
+import {kitById,drawLogo,BRANDS,type Brand} from './kits';
+const logos=new Map<Brand,T.CanvasTexture>();
+function logoTexture(b:Brand){let t=logos.get(b);if(!t){const c=document.createElement('canvas');c.width=c.height=128;drawLogo(c.getContext('2d')!,b,128,BRANDS[b].ink,'#00000055');t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;logos.set(b,t);}return t;}
 
 type Template = T.Group;
 export function createModelAssets(onReady:()=>void){
@@ -26,6 +29,13 @@ export function createModelAssets(onReady:()=>void){
    }o.geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(indices,4));o.geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));
   });
  });
+ // Head size/position from the skin mesh (for helmets and goggles).
+ let head:{x:number;y:number;z:number;r:number;front:number;minY:number}|null=null;
+ function headInfo(){if(head)return head;const b=new T.Box3();const v=new T.Vector3();
+  let top=0;const skin=(person!.children as T.Mesh[]).find(m=>m.name==='Object_4')!.geometry.attributes.position;for(let i=0;i<skin.count;i++)top=Math.max(top,skin.getY(i));
+  // top ~0.34 of the body mesh is the head (skull + face), above the neck
+  for(let i=0;i<skin.count;i++){v.fromBufferAttribute(skin,i);if(v.y>top-.34&&Math.abs(v.x)<.25)b.expandByPoint(v);}
+  const c=b.getCenter(new T.Vector3()),sz=b.getSize(new T.Vector3());return head={x:c.x,y:c.y,z:c.z,r:Math.max(sz.x,sz.z)/2,front:b.min.z,minY:b.min.y};}
  function clone(template:Template|null){return template?.clone(true)||null;}
  return{
   tree(seed:number){return trees.length?clone(trees[Math.abs(Math.floor(seed))%trees.length]):null;},
@@ -37,18 +47,54 @@ export function createModelAssets(onReady:()=>void){
    bone(-1,0,0);bone(0,-.36,2.16);bone(1,-.24,-.34);bone(0,.36,2.16);bone(3,.24,-.34);bone(0,-.18,1.35);bone(5,-.04,-.61);bone(0,.18,1.35);bone(7,.04,-.61);
    const handL=new T.Group(),handR=new T.Group();handL.position.set(-.15,-.35,0);handR.position.set(.15,-.35,0);bones[2].add(handL);bones[4].add(handR);
    const skeleton=new T.Skeleton(bones);root.updateMatrixWorld(true);
+   // Technical outerwear: the suit mesh is reshaped and recoloured per kit, then helmet/hood, goggles, gloves and a logo are added.
+   const kit=kitById(outfit.kit),style=kit.style,hem=style==='freeride'?1.12:1.28;
+   const jacketC=new T.Color(outfit.jacket),pantsC=new T.Color(outfit.pants),accentC=new T.Color(kit.accent),zipC=new T.Color('#121618');
+   let chestZ=-.2;
    for(const original of person.children as T.Mesh[]){
+    if(original.name==='Object_6')continue; // hair: always under a helmet or beanie
     const source=original.material as T.MeshStandardMaterial,material=source.clone();material.userData={};material.roughness=.95;material.metalness=0;
     let geo=original.geometry;
     if(original.name==='Object_10'){
-     // Keep the suit's geometry, but make jacket and trousers respond to wardrobe colors.
-     geo=geo.clone();geo.userData={};const pos=geo.attributes.position,colors=[];const jacket=new T.Color(outfit.jacket),pants=new T.Color(outfit.pants);
-     for(let i=0;i<pos.count;i++){const c=pos.getY(i)<1.28?pants:jacket;colors.push(c.r,c.g,c.b);}
-     geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));material.map=null;material.normalMap=null;material.vertexColors=true;material.color.set('#ffffff');
+     geo=geo.clone();geo.userData={};const pos=geo.attributes.position,colors:number[]=[],c=new T.Color();
+     for(let i=0;i<pos.count;i++){let x=pos.getX(i),z=pos.getZ(i);const y=pos.getY(i),side=Math.abs(x),pants=y<hem,front=z<-.03;
+      // Silhouette: freeride = baggy legs flaring to the boot and a roomy torso; race = slim; shell = trim.
+      if(pants&&side<.34){const x0=Math.sign(x)*.17,f=style==='freeride'?1.24+.24*Math.max(0,1-y/hem):style==='race'?.94:1.04;x=x0+(x-x0)*f;z*=f;}
+      else if(style==='freeride'&&y<2.1){x*=1.07;z*=1.1;}
+      pos.setXYZ(i,x,y,z);
+      c.copy(pants?pantsC:jacketC);
+      if(style==='race'&&((!pants&&side>.2&&side<.34)||(pants&&Math.abs(x)>.22)))c.copy(accentC); // race side panels
+      if(!pants&&y<hem+.05)c.copy(style==='shell'?jacketC.clone().multiplyScalar(.7):accentC); // hem / powder skirt trim
+      if((!pants&&Math.abs(y-1.98)<.02)||(!pants&&Math.abs(side-.27)<.012)||(pants&&Math.abs(y-.72)<.02))c.multiplyScalar(.72); // taped panel seams
+      if(front&&side<.022&&!pants&&y>hem+.05&&y<2.17)c.copy(zipC); // waterproof centre zip
+      if(style==='freeride'&&pants&&Math.abs(side-.29)<.014&&y>.82&&y<1.08)c.copy(zipC); // thigh vents
+      colors.push(c.r,c.g,c.b);
+      if(front&&Math.abs(x+.12)<.04&&Math.abs(y-1.9)<.04)chestZ=Math.min(chestZ,z);}
+     geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();material.map=null;material.normalMap=null;material.vertexColors=true;material.color.set('#ffffff');material.roughness=style==='race'?.45:.8;
     }
-    if(original.name==='Object_6'){material.color.set(outfit.hat);}
     const m=new T.SkinnedMesh(geo,material);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;root.add(m);m.bind(skeleton);
    }
+   const H=headInfo(),kitGear=new T.Group();bones[0].add(kitGear);
+   const std=(c:string,o:Partial<T.MeshStandardMaterialParameters>={})=>new T.MeshStandardMaterial({color:c,roughness:.6,...o});
+   const add=(g:T.BufferGeometry,mat:T.Material,x:number,y:number,z:number,parent:T.Object3D=kitGear)=>{const m=new T.Mesh(g,mat);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;};
+   if(style==='freeride'){
+    add(new T.SphereGeometry(H.r*1.08,16,10,0,Math.PI*2,0,Math.PI*.5),std(kit.accent,{roughness:1}),H.x,H.y+H.r*.32,H.z);
+    add(new T.CylinderGeometry(H.r*1.1,H.r*1.1,.07,18),std(kit.accent,{roughness:1}),H.x,H.y+H.r*.32,H.z);
+    // hood up over the beanie, open at the face
+    add(new T.SphereGeometry(H.r*1.3,16,12,Math.PI*1.5+1.05,Math.PI*2-2.1,0,Math.PI*.6),std(outfit.jacket,{roughness:.85,side:T.DoubleSide}),H.x,H.y+H.r*.2,H.z+.05);
+   }else{
+    const helmet=add(new T.SphereGeometry(H.r*1.14,18,12,0,Math.PI*2,0,Math.PI*.52),std(outfit.hat,{roughness:.35}),H.x,H.y+H.r*.28,H.z);
+    if(style==='race'){helmet.scale.set(1,1,1.25);helmet.position.z+=.04;}
+    add(new T.CylinderGeometry(.15,.17,.13,14),std(outfit.jacket,{roughness:.85}),H.x,H.minY+.02,H.z+.01); // storm collar
+   }
+   // goggles: strap around the head, framed mirrored lens over the eyes
+   add(new T.CylinderGeometry(H.r*1.17,H.r*1.17,.055,20,1,true),std(kit.accent,{side:T.DoubleSide}),H.x,H.y+H.r*.22,H.z);
+   add(new T.BoxGeometry(H.r*1.7,.13,.07),std('#14181a'),H.x,H.y+H.r*.22,H.front-.01);
+   add(new T.BoxGeometry(H.r*1.56,.1,.03),std(kit.lens,{metalness:.7,roughness:.12}),H.x,H.y+H.r*.22,H.front-.045);
+   // chest logo patch
+   const logo=add(new T.PlaneGeometry(.13,.13),new T.MeshBasicMaterial({map:logoTexture(kit.brand),transparent:true}),-.12,1.9,chestZ-.006);logo.rotation.y=Math.PI;logo.castShadow=false;
+   // gloves with contrast cuffs
+   for(const hand of [handL,handR]){add(new T.BoxGeometry(.12,.16,.11),std(kit.glove,{roughness:.9}),0,-.02,0,hand);add(new T.CylinderGeometry(.075,.075,.06,10),std(kit.accent),0,.07,0,hand);}
    return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean,extra=0,moving=false,edge=0){
     // Skis: double-pole push. Both arms swing together, legs stay parallel and fold on the push.
     const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?.1+extra*(grab?.5:.22):(board?(moving?.3:.12):.26+Math.max(0,-reach)*.3)+extra*.5;

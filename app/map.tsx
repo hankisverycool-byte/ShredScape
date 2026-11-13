@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useRef,useState} from 'react';
 import {BOUNDS,LOCATIONS,groundHeight,featuresNear,onTrail,type Feature} from './world';
+import {COURSE} from './race';
 
 // Top-down map drawn from the same terrain, trails and features the game uses. Rendered once, then cached.
 const PX=.12,W=Math.round((BOUNDS.maxX-BOUNDS.minX)*PX),H=Math.round((BOUNDS.maxY-BOUNDS.minY)*PX);
@@ -28,6 +29,8 @@ function mapImage(){
   else if(f.kind==='rock'){ctx.fillStyle='#7c918a';ctx.beginPath();ctx.arc(mx,my,2.4*f.size,0,7);ctx.fill();}
   else if(f.kind==='ramp'){ctx.fillStyle='#c98a4f';ctx.fillRect(mx-4,my-2,8,4);}
   else if(f.kind==='rail'){ctx.strokeStyle='#e0a63c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(mx,my-6);ctx.lineTo(mx,my+6);ctx.stroke();}}
+ // Timed run: start/finish lines and gates.
+ for(const g of [COURSE.start,...COURSE.gates]){const [gx,gy]=toMap(g.x,g.y),hw=g.w*PX/2;ctx.lineWidth=g.kind==='gate'?3:4;ctx.strokeStyle=g.kind==='gate'?(g.n%2?'#d6453b':'#2f6fd1'):'#13261e';ctx.beginPath();ctx.moveTo(gx-hw,gy);ctx.lineTo(gx+hw,gy);ctx.stroke();}
  return cache=c;
 }
 const arrow=(angle:number)=>`rotate(${180-angle*180/Math.PI})`;

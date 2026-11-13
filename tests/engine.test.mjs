@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import ts from 'typescript';
 const transpile=path=>ts.transpile(fs.readFileSync(path,'utf8'),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022});
 const url=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
-const source=transpile('app/game-engine.ts').replace("'./renderer3d'",JSON.stringify(url('export function createMountain3D(){return{draw(f){globalThis.frameState=f},destroy(){}}}'))).replace("'./world'",JSON.stringify(url(transpile('app/world.ts')))).replace("'./tricks'",JSON.stringify(url(transpile('app/tricks.ts')))).replace("'./ski-physics'",JSON.stringify(url(transpile('app/ski-physics.ts'))));
+const source=transpile('app/game-engine.ts').replace("'./renderer3d'",JSON.stringify(url('export function createMountain3D(){return{draw(f){globalThis.frameState=f},destroy(){}}}'))).replace("'./world'",JSON.stringify(url(transpile('app/world.ts')))).replace("'./tricks'",JSON.stringify(url(transpile('app/tricks.ts')))).replace("'./ski-physics'",JSON.stringify(url(transpile('app/ski-physics.ts')))).replace("'./race'",JSON.stringify(url(transpile('app/race.ts').replace("'./world'",JSON.stringify(url(transpile('app/world.ts')))))));
 const {createGame}=await import(url(source));
 globalThis.window={addEventListener(){},removeEventListener(){}};
 globalThis.localStorage={getItem(){return null},setItem(){}};

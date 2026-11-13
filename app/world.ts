@@ -16,7 +16,7 @@ export function groundHeight(x:number,y:number){
  const h=base+ridges*(1-lake)+sides;const lakeDistance=Math.hypot(x+1100,y-2100);const blend=Math.max(0,Math.min(1,(lakeDistance-290)/160));return -21*(1-blend)+h*blend;
 }
 export function regionAt(x:number,y:number){return LOCATIONS.reduce((a,b)=>Math.hypot(a.x-x,a.y-y)<Math.hypot(b.x-x,b.y-y)?a:b).name;}
-export type Feature={kind:'tree'|'rock'|'ramp'|'rail'|'flag';x:number;y:number;size:number;seed:number;id:string};
+export type Feature={kind:'tree'|'rock'|'ramp'|'rail'|'flag'|'gate'|'start'|'finish';x:number;y:number;size:number;seed:number;id:string};
 const hash=(n:number)=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
 export function featuresNear(x:number,y:number){const result:Feature[]=[];for(let row=Math.floor((y-1300)/200);row<=Math.ceil((y+1700)/200);row++){if(row< -3||row>33)continue;for(let col=-10;col<=10;col++){const xx=col*200,yy=row*200,seed=row*577+col*79;const px=xx+(hash(seed)-.5)*120,py=yy+hash(seed+2)*120;
  if(Math.abs(px-x)>1500)continue;

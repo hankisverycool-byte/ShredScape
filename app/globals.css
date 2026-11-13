@@ -66,3 +66,28 @@ html,body{font-family:var(--sans)}
 @media(max-width:650px){.score{top:66px;left:14px;padding:10px 14px}.score strong{font-size:28px}.minimap{top:66px;right:14px;width:104px;height:104px}.trick-display{top:22%;min-width:0;width:88%}.trick-display h2{font-size:22px}.speed{padding:8px 12px}.speed strong{font-size:30px}.world-map2,.world-map2 svg{max-height:60vh}}
 @media(max-width:650px){.mobile-controls button{font:700 12px var(--sans);border-radius:8px;flex:1;padding:16px 4px}}
 .snow-chip{font:700 10px var(--sans);letter-spacing:1.5px;text-transform:uppercase;font-style:normal;color:#13261e;background:#d8e6df;padding:4px 8px;border-radius:4px;margin-left:6px;align-self:center}.snow-chip.skidding{background:#f3c29c}
+/* Racing HUD: heavy italic tabular digits on skewed plates, all at the top edge; centre of the screen stays clear. */
+.race-hud,.race-idle{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:2}
+.race-time{font:900 italic 46px/1 var(--sans);font-variant-numeric:tabular-nums;letter-spacing:-1px;color:#fff;background:#0b1712eb;padding:8px 26px 9px;transform:skewX(-10deg);border-left:6px solid #ee7f4a;box-shadow:0 6px 18px #0005}
+.race-hud.finished .race-time{border-left-color:#2fbf71}
+.race-gates{display:flex;align-items:center;gap:4px;background:#0b1712cc;padding:6px 10px;transform:skewX(-10deg)}
+.race-gates i{display:block;width:16px;height:6px;background:#ffffff33}.race-gates i.done{background:#ee7f4a}.race-gates i.next{background:#fff;animation:gatepulse 1s infinite}
+.race-gates span{font:800 italic 12px var(--sans);letter-spacing:1.5px;margin-left:8px;color:#e9efe9}
+@keyframes gatepulse{50%{opacity:.35}}
+.race-split{display:flex;gap:10px;align-items:baseline;font:800 italic 14px var(--sans);font-variant-numeric:tabular-nums;letter-spacing:1px;background:#0b1712eb;color:#dfe8e2;padding:7px 14px;transform:skewX(-10deg)}
+.race-split .t{color:#fff}.race-split b{font-size:20px;padding:1px 8px;color:#fff}
+.race-split.ahead b{background:#1f9d5c}.race-split.behind b{background:#d13f44}.race-split .missed{color:#ffb4a0}
+.race-result{font:800 italic 12px var(--sans);letter-spacing:1.5px;background:#ee7f4a;color:#13261e;padding:6px 12px;transform:skewX(-10deg)}.race-result kbd{color:#13261e;border-color:#13261e66;background:none}
+.race-idle{flex-direction:row;gap:10px;font:600 12px var(--sans);background:#0b1712cc;padding:8px 14px;transform:translateX(-50%) skewX(-10deg);top:84px}
+.race-idle b{font:900 italic 12px var(--sans);letter-spacing:1.5px;color:#ee7f4a}.race-idle em{font:800 italic 12px var(--sans);font-variant-numeric:tabular-nums}
+/* Compact speed and score digits in the same racing face; trick banner moves to the bottom edge. */
+.speed strong,.score strong{font-style:italic;font-weight:900;font-variant-numeric:tabular-nums}
+.speed{padding:6px 12px}.speed strong{font-size:30px}
+.trick-display{top:auto;bottom:96px;padding:10px 20px;min-width:240px}.trick-display h2{font-size:22px;margin:3px 0}.trick-display strong{font-size:24px}
+@media(max-width:650px){.race-time{font-size:32px;padding:6px 16px}.race-gates i{width:10px}.race-hud{top:12px}.race-idle{top:62px;font-size:10px;max-width:92%;flex-wrap:wrap;justify-content:center}.trick-display{bottom:170px}}
+/* Shop: brand line and per-style silhouettes */
+.brand-line{display:flex;align-items:center;gap:8px;font:900 italic 13px var(--sans);letter-spacing:2px;color:var(--ink);margin-bottom:8px}.brand-line em{font:700 10px var(--sans);letter-spacing:1.5px;text-transform:uppercase;font-style:normal;color:#13261e;background:var(--accent,#c1ce9f);padding:3px 7px;border-radius:4px;margin-left:auto}
+.shop-item .brand-line em{background:#c1ce9f}
+.jacket-display{flex-direction:column;gap:0}.jacket-shape{height:96px;width:118px;box-shadow:inset 0 -8px 0 var(--accent)}.pants-shape{display:block;width:84px;height:62px;background:var(--pants);clip-path:polygon(4% 0,96% 0,100% 100%,60% 100%,50% 30%,40% 100%,0 100%);margin-top:-2px}
+.style-freeride .jacket-shape{height:112px;width:130px}.style-freeride .pants-shape{width:110px;height:58px;clip-path:polygon(8% 0,92% 0,100% 100%,58% 100%,50% 25%,42% 100%,0 100%)}
+.style-race .jacket-shape{width:100px;background:linear-gradient(90deg,var(--accent) 0 18%,var(--jacket) 18% 82%,var(--accent) 82%)}.style-race .pants-shape{width:70px;background:linear-gradient(90deg,var(--accent) 0 15%,var(--pants) 15% 85%,var(--accent) 85%)}
