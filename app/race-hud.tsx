@@ -3,11 +3,11 @@ import {formatTime,COURSE} from './race';
 import type {RunView} from './game-engine';
 
 // Racing HUD: big timer, gate progress, split vs best. Sits at the top edge so the slope and gates stay visible.
-export function RaceHud({run,y}:{run?:RunView;y:number}){
+export function RaceHud({run,x,y}:{run?:RunView;x:number;y:number}){
  if(!run)return null;
  const recentFinish=run.state==='finished'&&run.lastAge<10;
  if(run.state==='idle'||(run.state==='finished'&&!recentFinish)){
-  if(y>COURSE.start.y+60)return null;
+  if(y>COURSE.start.y+60||Math.abs(x-COURSE.start.x)>450)return null; // only prompt near the start gate
   return <div className="race-idle"><b>TIMED RUN</b><span>{run.course} · ride through the start gate below</span>{run.best!=null&&<em>BEST {formatTime(run.best)}</em>}</div>;
  }
  const s=run.last,showSplit=s&&run.lastAge<3.2,sign=(d:number)=>(d<=0?'−':'+')+Math.abs(d).toFixed(2);

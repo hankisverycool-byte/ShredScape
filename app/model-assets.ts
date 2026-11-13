@@ -25,6 +25,7 @@ export function createModelAssets(onReady:()=>void){
    for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);let a=0,b=0,w=0;const left=x<0;
     if(y<1.42){a=left?5:7;b=left?6:8;w=T.MathUtils.smoothstep( .80-y,-.08,.08);if(y>1.30){b=0;w=T.MathUtils.smoothstep(y,1.30,1.42);}}
     else if(Math.abs(x)>.34&&y<2.30){a=left?1:3;b=left?2:4;w=T.MathUtils.smoothstep(1.82-y,-.10,.10);}
+    else{b=9;w=T.MathUtils.smoothstep(y,1.42,1.8);} // torso and head bend at the waist with the chest bone
     indices.push(a,b,0,0);weights.push(1-w,w,0,0);
    }o.geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(indices,4));o.geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));
   });
@@ -45,6 +46,8 @@ export function createModelAssets(onReady:()=>void){
    const root=new T.Group(),bones:T.Bone[]=[];
    function bone(parent:number,x:number,y:number,z=0){const b=new T.Bone();b.position.set(x,y,z);if(parent<0)root.add(b);else bones[parent].add(b);bones.push(b);}
    bone(-1,0,0);bone(0,-.36,2.16);bone(1,-.24,-.34);bone(0,.36,2.16);bone(3,.24,-.34);bone(0,-.18,1.35);bone(5,-.04,-.61);bone(0,.18,1.35);bone(7,.04,-.61);
+   // Chest bone at the waist: shoulders, arms, head and headgear hang off it so the upper body can twist, tuck and angulate.
+   bone(0,0,1.45);for(const i of [1,3]){bones[9].add(bones[i]);bones[i].position.y-=1.45;}
    const handL=new T.Group(),handR=new T.Group();handL.position.set(-.15,-.35,0);handR.position.set(.15,-.35,0);bones[2].add(handL);bones[4].add(handR);
    const skeleton=new T.Skeleton(bones);root.updateMatrixWorld(true);
    // Technical outerwear: the suit mesh is reshaped and recoloured per kit, then helmet/hood, goggles, gloves and a logo are added.
@@ -74,7 +77,7 @@ export function createModelAssets(onReady:()=>void){
     }
     const m=new T.SkinnedMesh(geo,material);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;root.add(m);m.bind(skeleton);
    }
-   const H=headInfo(),kitGear=new T.Group();bones[0].add(kitGear);
+   const H=headInfo(),kitGear=new T.Group();kitGear.position.y=-1.45;bones[9].add(kitGear);
    const std=(c:string,o:Partial<T.MeshStandardMaterialParameters>={})=>new T.MeshStandardMaterial({color:c,roughness:.6,...o});
    const add=(g:T.BufferGeometry,mat:T.Material,x:number,y:number,z:number,parent:T.Object3D=kitGear)=>{const m=new T.Mesh(g,mat);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;};
    if(style==='freeride'){
@@ -95,14 +98,20 @@ export function createModelAssets(onReady:()=>void){
    const logo=add(new T.PlaneGeometry(.13,.13),new T.MeshBasicMaterial({map:logoTexture(kit.brand),transparent:true}),-.12,1.9,chestZ-.006);logo.rotation.y=Math.PI;logo.castShadow=false;
    // gloves with contrast cuffs
    for(const hand of [handL,handR]){add(new T.BoxGeometry(.12,.16,.11),std(kit.glove,{roughness:.9}),0,-.02,0,hand);add(new T.CylinderGeometry(.075,.075,.06,10),std(kit.accent),0,.07,0,hand);}
-   return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean,extra=0,moving=false,edge=0){
+   return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean,extra=0,moving=false,edge=0,upper={pitch:0,yaw:0,roll:0,balance:0}){
+    bones[9].rotation.set(upper.pitch,upper.yaw,upper.roll);
     // Skis: double-pole push. Both arms swing together, legs stay parallel and fold on the push.
-    const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?.1+extra*(grab?.5:.22):(board?(moving?.3:.12):.26+Math.max(0,-reach)*.3)+extra*.5;
-    if(board){bones[1].rotation.set(grab?-1.1:-stride*.75,0,.42);bones[3].rotation.set(grab?-.8:stride*.75,0,-.42);}
-    else{const arm=grab?-1:-.35-reach*.9;bones[1].rotation.set(arm,0,.3);bones[3].rotation.set(arm,0,-.3);}
-    bones[2].rotation.x=bones[4].rotation.x=grab?-.7:-.12;
+    const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?.1+extra*(grab?.5:.22):Math.max(.1,(board?(moving?.38:.14):.26+Math.max(0,-reach)*.3)+extra*.5);
+    if(grab){ // one hand reaches down for the ski/board, the other flies out for balance
+     bones[1].rotation.set(-.95,0,.3);bones[2].rotation.x=-.35;bones[3].rotation.set(.3,0,.45);bones[4].rotation.x=-.4;
+    }else{
+     if(board){bones[1].rotation.set(-stride*.75,0,.42-(air?.75:moving?.5:0));bones[3].rotation.set(stride*.75,0,-.42+(air?.75:moving?.5:0));}
+     else{const arm=air?-.5:-.35-reach*.9;bones[1].rotation.set(arm,0,.3-(air?.35:0));bones[3].rotation.set(arm,0,-.3+(air?.35:0));}
+     bones[2].rotation.x=bones[4].rotation.x=air?-.6:-.12-(moving&&!board?.35:0);
+    }
+    if(upper.balance&&!grab){bones[1].rotation.z-=.75;bones[3].rotation.z+=.75;} // arms wide on a rail
     // Snowboard: knees open a little for a wider, athletic stance.
-    bones[5].rotation.set(crouch,0,board?stride*.40+.12:0);bones[7].rotation.set(crouch,0,board?-.12:0);
+    bones[5].rotation.set(crouch,0,board?stride*.40-.22:0);bones[7].rotation.set(crouch,0,board?.22:0);
     // Skis: outside leg long and loaded, inside leg folded and light.
     if(!board&&!air&&edge){const e=Math.abs(edge),[inL,outL,inK]=edge>0?[5,7,6]:[7,5,8];bones[inL].rotation.x+=.3*e;bones[outL].rotation.x-=.1*e;bones[inK].rotation.x-=.45*e;}
     bones[5].position.z=board?power*.32:0;bones[7].position.z=0;
@@ -110,9 +119,10 @@ export function createModelAssets(onReady:()=>void){
    },
    // Limp, flailing limbs while tumbling. a = flail strength (decays), k = 1 until getting back up.
    flail(e:number,a:number,k:number,seed:number){const w=(f:number,ph:number)=>Math.sin(e*f+seed+ph);
-    bones[1].rotation.set((-.6+w(11,0)*1.4*a)*k,0,(.42+.9+w(7,1)*.6*a)*k+.42*(1-k));bones[3].rotation.set((-.6+w(10,2)*1.4*a)*k,0,(-.42-.9+w(8,3)*.6*a)*k-.42*(1-k));
+    bones[9].rotation.set(w(6,10)*.5*a*k,w(5,11)*.6*a*k,w(7,12)*.4*a*k);
+    bones[1].rotation.set((-.6+w(11,0)*1.4*a)*k,0,(.42-.9+w(7,1)*.6*a)*k+.42*(1-k));bones[3].rotation.set((-.6+w(10,2)*1.4*a)*k,0,(-.42+.9+w(8,3)*.6*a)*k-.42*(1-k));
     bones[2].rotation.x=(-.4-Math.abs(w(13,4))*1.1*a)*k-.12*(1-k);bones[4].rotation.x=(-.4-Math.abs(w(12,5))*1.1*a)*k-.12*(1-k);
-    bones[5].rotation.set((.35+w(9,6)*1*a)*k,0,.2*k);bones[7].rotation.set((.2+w(8,7)*1*a)*k,0,-.2*k);
+    bones[5].rotation.set((.35+w(9,6)*1*a)*k,0,-.2*k);bones[7].rotation.set((.2+w(8,7)*1*a)*k,0,.2*k);
     bones[6].rotation.x=(-.5-Math.abs(w(10,8))*1*a)*k;bones[8].rotation.x=(-.3-Math.abs(w(11,9))*1*a)*k;
    }};
   },

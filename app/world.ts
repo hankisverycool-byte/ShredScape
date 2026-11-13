@@ -23,7 +23,10 @@ export function featuresNear(x:number,y:number){const result:Feature[]=[];for(le
  const inHub=LOCATIONS.some(p=>Math.hypot(px-p.x,py-p.y)<260);
  const trail=Math.abs(px-trailCenter(py))<230||Math.abs(px-950)<210||Math.abs(px+800)<170;
  if(!trail&&!inHub&&hash(seed+3)>.3)result.push({kind:hash(seed+4)>.92?'rock':'tree',x:px,y:py,size:.8+hash(seed+8)*.6,seed,id:'n'+row+':'+col});}
- if(row>0&&row<31){for(const lane of [0,950,-800]){if(Math.abs(lane-x)>1500)continue;const yy=row*200+95;result.push({kind:row%3===0&&lane===950?'rail':'ramp',x:lane+Math.sin(row*1.88)*110,y:yy,size:lane===950?1.3:1,seed:row,id:'p'+row+':'+lane});}}
+ if(row>0&&row<31){for(const lane of [0,950,-800]){if(Math.abs(lane-x)>1500)continue;const yy=row*200+95;result.push({kind:row%3===0&&lane===950?'rail':'ramp',x:lane+Math.sin(row*1.88)*110,y:yy,size:lane===950?1.3:1,seed:row,id:'p'+row+':'+lane});
+  // Extra rails and boxes: beside the park kickers, and on the lower main trail (below the timed course).
+  if(lane===950&&row%3!==0&&row%2===0)result.push({kind:'rail',x:lane+Math.sin(row*1.88)*110+95,y:yy,size:1.3,seed:row+1,id:'r'+row+':'+lane});
+  if(lane===0&&row>20&&row%2===1)result.push({kind:'rail',x:Math.sin(row*1.88)*110-95,y:yy,size:1,seed:row,id:'r'+row+':'+lane});}}
  }return result;}
 export const onTrail=(x:number,y:number)=>Math.abs(x-trailCenter(y))<235||Math.abs(x-950)<210||Math.abs(x+800)<170;
 // Frozen lake is ice, pisted trails are groomed, everything else is powder.

@@ -1,4 +1,4 @@
-export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[]};
+export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number};
 export const JUMP={gravity:440,pop:185,ramp:235};
 export const AIR_CONTROL={spinRate:Math.PI*2.5,flipRate:Math.PI*3};
 export function emptyTrick():TrickState{return{spin:0,flip:0,grabTime:0,grab:'Indy',grinding:false,names:[]};}
@@ -16,7 +16,8 @@ export function landingResult(t:TrickState){
  if(spinTurns){names.push((spinTurns*180)+'°');base+=spinTurns*180;}
  if(flipTurns){const direction=t.flip<0?'Frontflip':'Backflip';names.push((flipTurns>1?flipTurns+'× ':'')+direction);base+=flipTurns*500;}
  if(t.grabTime>.12){names.push(t.grab);base+=Math.round(120+Math.min(t.grabTime,2)*160);}
- if(t.grinding){names.push('50–50');base+=350;}
+ // Grinds pay for the lock-on plus distance slid.
+ if(t.grinding){names.push(t.grind||'50–50');base+=150+Math.round((t.grindDist||0)*2);}
  const multiplier=Math.min(8,1+names.length);
  return{clean,names,base,multiplier,points:clean?base*multiplier:0};
 }

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import ts from 'typescript';
 const transpile=path=>ts.transpile(fs.readFileSync(path,'utf8'),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022});
 const url=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
-const source=transpile('app/game-engine.ts').replace("'./renderer3d'",JSON.stringify(url('export function createMountain3D(){return{draw(f){globalThis.frameState=f},destroy(){}}}'))).replace("'./world'",JSON.stringify(url(transpile('app/world.ts')))).replace("'./tricks'",JSON.stringify(url(transpile('app/tricks.ts')))).replace("'./ski-physics'",JSON.stringify(url(transpile('app/ski-physics.ts')))).replace("'./race'",JSON.stringify(url(transpile('app/race.ts').replace("'./world'",JSON.stringify(url(transpile('app/world.ts')))))));
+const source=transpile('app/game-engine.ts').replace("'./renderer3d'",JSON.stringify(url('export function createMountain3D(){return{draw(f){globalThis.frameState=f},destroy(){}}}'))).replace("'./world'",JSON.stringify(url(transpile('app/world.ts')))).replace("'./tricks'",JSON.stringify(url(transpile('app/tricks.ts')))).replace("'./ski-physics'",JSON.stringify(url(transpile('app/ski-physics.ts')))).replace("'./park'",JSON.stringify(url(transpile('app/park.ts')))).replace("'./race'",JSON.stringify(url(transpile('app/race.ts').replace("'./world'",JSON.stringify(url(transpile('app/world.ts')))))));
 const {createGame}=await import(url(source));
 globalThis.window={addEventListener(){},removeEventListener(){}};
 globalThis.localStorage={getItem(){return null},setItem(){}};
@@ -24,4 +24,20 @@ test('pushing drives animation only on snow and stops when released',()=>{
  const s=setup();s.game.input('up',true);s.tick(.25);assert.ok(globalThis.frameState.pushPower>.9);assert.ok(globalThis.frameState.pushPhase>0);
  s.game.input('up',false);s.tick(.5);assert.ok(globalThis.frameState.pushPower<.01);
  s.game.input('jump',true);s.game.input('up',true);s.tick(.15);assert.equal(globalThis.frameState.pushPower,0);s.game.destroy();
+});
+// World layout facts used below: park-lane features sit at y=row*200+95, x=950+sin(row*1.88)*110.
+const laneX=row=>950+Math.sin(row*1.88)*110,laneY=row=>row*200+95;
+test('riding onto a rail locks on, slides, and banks a grind after dropping off the end',()=>{
+ const s=setup(),row=3;s.game.debugPlace(laneX(row),laneY(row)-130,0,0,150);s.tick(.25);
+ let d=s.game.debugState();assert.equal(d.rail,true);assert.ok(d.lift>8);assert.ok(Math.abs(d.x-laneX(row))<3);
+ s.tick(2.5);d=s.game.debugState();assert.equal(d.rail,false);assert.equal(d.bailed,false);assert.ok(d.score>=300,'score '+d.score);s.game.destroy();
+});
+test('jumping onto a rail from the air locks on; turning on it becomes a sideways slide',()=>{
+ const s=setup(),row=3;s.game.debugPlace(laneX(row),laneY(row)-200,0,0,150);s.game.input('jump',true);s.game.input('jump',false);s.tick(1);
+ assert.equal(s.game.debugState().rail,true);s.game.input('right',true);s.tick(.6);s.game.input('right',false);
+ assert.match(s.game.debugState().trick,/Railslide|Boardslide/);s.game.destroy();
+});
+test('a snow kicker lifts the rider up its face and launches them, faster = higher',()=>{
+ const air=v=>{const s=setup(),row=1;s.game.debugPlace(laneX(row),laneY(row)-120,0,0,v);let lifted=0,peak=0;for(let i=0;i<60;i++){s.tick(.05);const d=s.game.debugState();lifted=Math.max(lifted,d.lift);peak=Math.max(peak,d.z);}s.game.destroy();return{lifted,peak};};
+ const slow=air(120),fast=air(260);assert.ok(slow.lifted>15);assert.ok(fast.peak>slow.peak+10,'fast '+fast.peak.toFixed(0)+' slow '+slow.peak.toFixed(0));
 });
