@@ -1,16 +1,17 @@
 import {createMountain3D} from './renderer3d';
 import {featuresNear,groundHeight,regionAt,snowAt,LOCATIONS,BOUNDS} from './world';
 import {stepSki,wrap,SNOW,GRAVITY,type Snow} from './ski-physics';
+import {pushWeight,tuckWeight} from './rig-pose';
 import {kickerLift,kickerShape,kickerLaunch,railShape,onRail,grindName} from './park';
 import {stepRun,idleRun,COURSE,type Run,type Best} from './race';
 import type {Feature} from './world';
 import {emptyTrick,landingResult,advanceAirTrick,JUMP} from './tricks';
-export type Outfit={jacket:string;pants:string;hat:string;gear:'snowboard'|'skis';avatar?:'explorer'|'classic';kit?:string};
+export type Outfit={jacket:string;pants:string;hat:string;gear:'snowboard'|'skis';avatar?:'explorer'|'classic';kit?:string;poles?:'none'|'carbon'|'kit'};
 export type RiderMotion={spin:number;flip:number;pushPhase:number;pushPower:number;grab:number};
 export type Peer={id:string;name:string;x:number;y:number;z:number;angle:number;outfit:Outfit;score:number;motion?:RiderMotion};
 export type GameSnapshot={score:number;best:number;combo:number;multiplier:number;trick:string;speed:number;airborne:boolean;distance:number;bailed:boolean;playing:boolean;x:number;y:number;z:number;angle:number;region?:string;creditsEarned?:number;landing?:string;spin?:number;flip?:number;landingReady?:boolean;grab?:number;pushPhase?:number;pushPower?:number;snow?:string;skid?:number;fakie?:boolean;run?:RunView};
 export type RunView={state:Run['state'];time:number;gate:number;gates:number;last:Run['last'];lastAge:number;best:number|null;newBest:boolean;missed:number;course:string};
-export type GameSettings={quality:'low'|'high';fov:number;sensitivity:number;cameraDistance:number;debugYaw?:number;debugCam?:{yaw:number;dist:number;height:number}};
+export type GameSettings={quality:'low'|'high';fov:number;sensitivity:number;cameraDistance:number;debugYaw?:number;debugCam?:{yaw:number;dist:number;height:number;look?:number}};
 // Wipeout length in seconds. Space gets you up early after the first 0.6s.
 export const BAIL=1.8;
 // World features plus the timed-run gates near the rider.
@@ -18,7 +19,7 @@ function nearby(x:number,y:number):Feature[]{const out=featuresNear(x,y);for(con
 export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>void){
  const mountain=createMountain3D(canvas);let outfit:Outfit={jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear:'snowboard'};
  let x=0,y=0,z=0,vz=0,vx=0,vy=0,course=0,fakie=false,lift=0,rail:Feature|null=null,kicker:Feature|null=null,edge=0,skid=0,absorb=0,backseat=0,snow:Snow='groomed',speed=0,angle=0,score=0,best=0,combo=0,multiplier=1,clock=0,bail=0,grace=1,totalDistance=0,creditsEarned=0;
- let playing=false,destroyed=false,raf=0,last=performance.now(),pub=0,featureTime=0,jumpCooldown=0,bankTime=0,pushPhase=0,pushPower=0;
+ let playing=false,destroyed=false,raf=0,last=performance.now(),pub=0,featureTime=0,jumpCooldown=0,bankTime=0,pushPhase=0,pushPower=0,tuck=0;
  let trick='Choose your own line.',landing='',view='start',settings:GameSettings={quality:'high',fov:65,sensitivity:1,cameraDistance:10};
  let run:Run=idleRun(),runBest:Best|null=null;try{runBest=JSON.parse(localStorage.getItem('shredscape-run-best')||'null');}catch{}
  let tricks=emptyTrick(),features=nearby(x,y),peers:Peer[]=[],visualPeers:Peer[]=[];
@@ -59,11 +60,14 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  function update(dt:number){clock+=dt;if(playing){const rx=x,ry=y;jumpCooldown=Math.max(0,jumpCooldown-dt);grace=Math.max(0,grace-dt);bankTime=Math.max(0,bankTime-dt);if(bankTime===0&&z===0){combo=0;multiplier=1;}
  if(bail>0){bail=Math.max(0,bail-dt);if(!bail)grace=1.8;const f=Math.exp(-2.4*dt);vx*=f;vy*=f;speed=Math.hypot(vx,vy);const n={x:x+vx*dt,y:y+vy*dt};x=Math.max(BOUNDS.minX,Math.min(BOUNDS.maxX,n.x));y=Math.max(BOUNDS.minY,Math.min(BOUNDS.maxY,n.y));}else{
  const steer=Number(pressed.has('right'))-Number(pressed.has('left'));const wasAirborne=z>0;
- const pushing=!wasAirborne&&pressed.has('up');pushPower+=((pushing?1:0)-pushPower)*Math.min(1,dt*12);if(pushPower>.01)pushPhase+=dt*(outfit.gear==='skis'?4.5:6);
+ const pushing=!wasAirborne&&pressed.has('up'),pw=pushWeight(speed);
+ // The poling/skating ANIMATION is a low-speed thing (fades out by ~20 km/h); the key keeps accelerating you either way (a tuck at speed),
+ // so the speed you can reach does not change - only what it looks like.
+ pushPower+=((pushing?pw:0)-pushPower)*Math.min(1,dt*12);tuck+=((pushing?tuckWeight(speed,true):0)-tuck)*Math.min(1,dt*5);if(pushPower>.01)pushPhase+=dt*(outfit.gear==='skis'?4.5:6);
  snow=snowAt(x,y);let latX=0,latY=0;
  if(rail)grind(dt,steer);
  else if(!wasAirborne){
-  const r=stepSki({vx,vy,angle},{steer,push:pushing,brake:pressed.has('down'),boost:pressed.has('boost'),pivot:pressed.has('grab')&&!!steer,sensitivity:settings.sensitivity,gradX:(groundHeight(x+4,y)-groundHeight(x-4,y))/8,gradY:(groundHeight(x,y+4)-groundHeight(x,y-4))/8,snow},dt);
+  const r=stepSki({vx,vy,angle},{steer,push:pushing,pushScale:.6+.4*pw,tuck,brake:pressed.has('down'),boost:pressed.has('boost'),pivot:pressed.has('grab')&&!!steer,sensitivity:settings.sensitivity,gradX:(groundHeight(x+4,y)-groundHeight(x-4,y))/8,gradY:(groundHeight(x,y+4)-groundHeight(x,y-4))/8,snow},dt);
   // Edge angle follows how hard the motion is actually turning (lateral load vs grip); a hockey stop braces against the slide.
   const turn=dt>0?wrap(r.course-course)/dt:0,load=-(r.speed*turn)/SNOW[snow].grip+(r.stopping?Math.sign(Math.sin(r.angle-r.course))*-.8*r.skid:0);
   edge+=(Math.max(-1,Math.min(1,r.speed>8?load:0))-edge)*Math.min(1,dt*8);
@@ -101,10 +105,10 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  visualPeers=peers.map(p=>{const old=visualPeers.find(v=>v.id===p.id);if(!old||Math.hypot(old.x-p.x,old.y-p.y)>400)return p;return{...p,x:old.x+(p.x-old.x)*Math.min(1,dt*9),y:old.y+(p.y-old.y)*Math.min(1,dt*9),z:old.z+(p.z-old.z)*Math.min(1,dt*9)};});
  pub+=dt;if(pub>.1){pub=0;emit();}
  }
- function frame(now:number){if(destroyed)return;const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);mountain.draw({x,y,z,lift,rail:!!rail,angle,speed,clock,bail,course,fakie,edge,skid,absorb,backseat,snow,pushPhase,pushPower:playing&&z===0&&!bail?pushPower:0,spin:tricks.spin,flip:tricks.flip,grab:pressed.has('grab')&&z>0?1:0,playing,outfit,features,peers:visualPeers,particles,view,settings});raf=requestAnimationFrame(frame);}
+ function frame(now:number){if(destroyed)return;const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);mountain.draw({x,y,z,lift,rail:!!rail,angle,speed,clock,bail,course,fakie,edge,skid,absorb,backseat,snow,tuck:playing&&z===0&&!bail?tuck:0,pushPhase,pushPower:playing&&z===0&&!bail?pushPower:0,spin:tricks.spin,flip:tricks.flip,grab:pressed.has('grab')&&z>0?1:0,playing,outfit,features,peers:visualPeers,particles,view,settings});raf=requestAnimationFrame(frame);}
  raf=requestAnimationFrame(frame);emit();
- return{start(){playing=true;view='game';emit();},pause(){playing=false;pushPower=0;pressed.clear();emit();},reset,input,setOutfit(o:Outfit){outfit={...o};},setPeers(p:Peer[]){peers=p;},setView(v:string){view=v;},setSettings(s:GameSettings){settings=s;},// Dev/test only: place the rider at an exact spot, heading and velocity.
+ return{start(){playing=true;view='game';emit();},pause(){playing=false;pushPower=0;tuck=0;pressed.clear();emit();},reset,input,setOutfit(o:Outfit){outfit={...o};},setPeers(p:Peer[]){peers=p;},setView(v:string){view=v;},setSettings(s:GameSettings){settings=s;},// Dev/test only: place the rider at an exact spot, heading and velocity.
  debugPlace(px:number,py:number,a:number,dvx=0,dvy=0){lift=0;rail=null;kicker=null;tricks=emptyTrick();x=px;y=py;z=0;angle=a;vx=dvx;vy=dvy;speed=Math.hypot(vx,vy);course=speed>1?Math.atan2(vx,vy):a;fakie=vx*Math.sin(a)+vy*Math.cos(a)<0;bail=0;grace=1;features=nearby(x,y);},
- debugState(){return{x,y,z,angle,speed,course,fakie,run:run.state,next:run.next,clock,spin:tricks.spin,bailed:bail>0,lift,rail:!!rail,score,trick};},
+ debugState(){return{x,y,z,angle,speed,course,fakie,run:run.state,next:run.next,clock,spin:tricks.spin,bailed:bail>0,lift,rail:!!rail,score,trick,pushPower,tuck,pushPhase};},
  travel(id:string){const dest=LOCATIONS.find(p=>p.id===id);if(!dest)return;run=idleRun();lift=0;rail=null;kicker=null;x=dest.x;y=dest.y;z=0;speed=0;vx=0;vy=0;angle=0;bail=0;grace=1;combo=0;tricks=emptyTrick();features=nearby(x,y);emit();},destroy(){destroyed=true;cancelAnimationFrame(raf);mountain.destroy();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',blur);}};
 }

@@ -91,3 +91,4 @@ html,body{font-family:var(--sans)}
 .jacket-display{flex-direction:column;gap:0}.jacket-shape{height:96px;width:118px;box-shadow:inset 0 -8px 0 var(--accent)}.pants-shape{display:block;width:84px;height:62px;background:var(--pants);clip-path:polygon(4% 0,96% 0,100% 100%,60% 100%,50% 30%,40% 100%,0 100%);margin-top:-2px}
 .style-freeride .jacket-shape{height:112px;width:130px}.style-freeride .pants-shape{width:110px;height:58px;clip-path:polygon(8% 0,92% 0,100% 100%,58% 100%,50% 25%,42% 100%,0 100%)}
 .style-race .jacket-shape{width:100px;background:linear-gradient(90deg,var(--accent) 0 18%,var(--jacket) 18% 82%,var(--accent) 82%)}.style-race .pants-shape{width:70px;background:linear-gradient(90deg,var(--accent) 0 15%,var(--pants) 15% 85%,var(--accent) 85%)}
+.gear-tabs.three button{width:33.333%;font-size:10px;letter-spacing:.5px;padding:12px 4px}.gear-tabs{margin:14px 0}

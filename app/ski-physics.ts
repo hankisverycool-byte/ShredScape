@@ -10,7 +10,7 @@ export const SNOW:Record<Snow,{grip:number;scrape:number;drag:number;label:strin
 // drag = snow friction (constant); air drag grows with speed squared.
 export const GRAVITY=2600,AIR=.0011,PUSH=145,TURN_RATE=1.7;
 export const wrap=(a:number)=>Math.atan2(Math.sin(a),Math.cos(a));
-export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;rand?:()=>number};
+export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;pushScale?:number;tuck?:number;rand?:()=>number};
 export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:number){
  const S=SNOW[inp.snow],rand=inp.rand||Math.random;
  let {vx,vy,angle}=s;
@@ -35,8 +35,9 @@ export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:num
  const px=dy,py=-dx,gx=-inp.gradX*GRAVITY,gy=-inp.gradY*GRAVITY,gAlong=gx*dx+gy*dy;
  let u=vx*dx+vy*dy,w=vx*px+vy*py;
  // Along the skis: gravity and push accelerate, snow friction and air drag slow.
- u+=(gAlong+(inp.push?PUSH:0))*dt;
- const drag=S.drag+AIR*sp0*sp0+(inp.brake?240:0);
+ u+=(gAlong+(inp.push?PUSH*(inp.pushScale??1):0))*dt;
+ // A tuck cuts air drag by up to 85%, so holding the push key at speed still pays off.
+ const drag=S.drag+AIR*sp0*sp0*(1-.85*(inp.tuck||0))+(inp.brake?240:0);
  u-=Math.sign(u)*Math.min(Math.abs(u),drag*dt);
  // Across the skis: gravity pushes sideways, edges resist up to their grip.
  w+=(gx*px+gy*py)*dt;

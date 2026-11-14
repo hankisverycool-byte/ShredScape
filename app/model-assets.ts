@@ -2,6 +2,7 @@ import * as T from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type {Outfit} from './game-engine';
 import {kitById,drawLogo,BRANDS,type Brand} from './kits';
+import type {Rig,Leg} from './rig';
 const logos=new Map<Brand,T.CanvasTexture>();
 function logoTexture(b:Brand){let t=logos.get(b);if(!t){const c=document.createElement('canvas');c.width=c.height=128;drawLogo(c.getContext('2d')!,b,128,BRANDS[b].ink,'#00000055');t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;logos.set(b,t);}return t;}
 
@@ -10,23 +11,30 @@ export function createModelAssets(onReady:()=>void){
  const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;
  const resources=new Set<T.BufferGeometry|T.Material|T.Texture>();
  function track(g:T.Object3D){g.traverse(o=>{if(o instanceof T.Mesh){resources.add(o.geometry);o.geometry.userData.assetShared=true;for(const m of Array.isArray(o.material)?o.material:[o.material]){resources.add(m);m.userData.assetShared=true;for(const value of Object.values(m))if(value instanceof T.Texture)resources.add(value);}}});}
- function bake(mesh:T.Mesh,matrix=mesh.matrixWorld){const out=new T.Mesh(mesh.geometry.clone().applyMatrix4(matrix),mesh.material);out.castShadow=true;out.receiveShadow=true;return out;}
+ function bake(mesh:T.Mesh,matrix=mesh.matrixWorld){const out=new T.Mesh(mesh.geometry.clone().applyMatrix4(matrix),mesh.material);out.name=mesh.name;out.castShadow=true;out.receiveShadow=true;return out;}
  function fit(group:T.Group,size:number,axis:'x'|'y'|'z'){const box=new T.Box3().setFromObject(group),center=box.getCenter(new T.Vector3()),scale=size/box.getSize(new T.Vector3())[axis];for(const m of group.children as T.Mesh[]){m.geometry.translate(-center.x,-box.min.y,-center.z);m.geometry.scale(scale,scale,scale);}track(group);return group;}
  async function load(url:string,prepare:(scene:T.Group)=>void){try{const gltf=await loader.loadAsync(url);if(disposed){gltf.scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});return;}gltf.scene.updateMatrixWorld(true);track(gltf.scene);prepare(gltf.scene);onReady();}catch(e){console.warn('Model could not load; using built-in fallback.',url,e);}}
  void load('/models/snowy-trees.glb',scene=>{scene.traverse(o=>{if(o instanceof T.Mesh){const g=new T.Group();g.add(bake(o));trees.push(fit(g,5,'y'));}});});
  void load('/models/eli-snowboard.glb',scene=>{const g=new T.Group();scene.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o));});board=fit(g,2.2,'x');});
  void load('/models/skis/scene.gltf',scene=>{const g=new T.Group();// Raw ski mesh has bindings on -Y; flip so they face up and the tip points forward (-Z).
- scene.getObjectByName('Ski_L')?.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o,new T.Matrix4().makeRotationX(Math.PI)));});skis=fit(g,2.2,'z');});
+ scene.getObjectByName('Ski_L')?.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o,new T.Matrix4().makeRotationX(Math.PI)));});skis=fit(g,2.2,'z');
+  });
  void load('/models/rider.glb',scene=>{
   const g=new T.Group();scene.traverse(o=>{if(o instanceof T.Mesh&&['Object_4','Object_6','Object_8','Object_10','Object_12'].includes(o.name)){const m=bake(o);m.name=o.name;g.add(m);}});
   person=fit(g,2.65,'y');
   // Source faces +Z. Our riders face -Z.
-  person.traverse(o=>{if(!(o instanceof T.Mesh))return;o.geometry.rotateY(Math.PI);const p=o.geometry.attributes.position,indices=[],weights=[];
-   for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);let a=0,b=0,w=0;const left=x<0;
-    if(y<1.42){a=left?5:7;b=left?6:8;w=T.MathUtils.smoothstep( .80-y,-.08,.08);if(y>1.30){b=0;w=T.MathUtils.smoothstep(y,1.30,1.42);}}
-    else if(Math.abs(x)>.34&&y<2.30){a=left?1:3;b=left?2:4;w=T.MathUtils.smoothstep(1.82-y,-.10,.10);}
-    else{b=9;w=T.MathUtils.smoothstep(y,1.42,1.8);} // torso and head bend at the waist with the chest bone
-    indices.push(a,b,0,0);weights.push(1-w,w,0,0);
+  // Skinning. Bones: 0 root, 1/2 L shoulder/elbow, 3/4 R shoulder/elbow, 5/6/10 L hip/knee/ankle, 7/8/11 R hip/knee/ankle, 9 chest.
+  // Every blend is a smoothstep so nothing is cut along a hard line: a big arm swing used to tear the mesh at the shoulder.
+  person.traverse(o=>{if(!(o instanceof T.Mesh))return;o.geometry.rotateY(Math.PI);const p=o.geometry.attributes.position,indices:number[]=[],weights:number[]=[],sm=T.MathUtils.smoothstep;
+   for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),ax=Math.abs(x),left=x<0;
+    if(o.name==='Object_12'){indices.push(left?10:11,0,0,0);weights.push(1,0,0,0);continue;} // shoes ride the ankle bone
+    if(y<1.42){ // hips and legs: thigh -> shin -> ankle, easing into the root at the crotch
+     const kb=sm(.80-y,-.08,.08),ab=sm(.34-y,0,.2),rb=y>1.30?sm(y,1.30,1.42):0,leg=1-rb;
+     indices.push(0,left?5:7,left?6:8,left?10:11);weights.push(rb,leg*(1-kb),leg*kb*(1-ab),leg*kb*ab);
+    }else{ // torso and arms: root -> chest up the body; a wide blend band from torso into shoulder, then shoulder -> elbow
+     const cb=sm(y,1.42,1.80),armW=y<2.34?sm(ax,.20,.42)*(1-sm(y,2.20,2.34)):0,eb=sm(1.82-y,-.10,.10);
+     indices.push(0,9,left?1:3,left?2:4);weights.push((1-armW)*(1-cb),(1-armW)*cb,armW*(1-eb),armW*eb);
+    }
    }o.geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(indices,4));o.geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));
   });
  });
@@ -48,7 +56,9 @@ export function createModelAssets(onReady:()=>void){
    bone(-1,0,0);bone(0,-.36,2.16);bone(1,-.24,-.34);bone(0,.36,2.16);bone(3,.24,-.34);bone(0,-.18,1.35);bone(5,-.04,-.61);bone(0,.18,1.35);bone(7,.04,-.61);
    // Chest bone at the waist: shoulders, arms, head and headgear hang off it so the upper body can twist, tuck and angulate.
    bone(0,0,1.45);for(const i of [1,3]){bones[9].add(bones[i]);bones[i].position.y-=1.45;}
-   const handL=new T.Group(),handR=new T.Group();handL.position.set(-.15,-.35,0);handR.position.set(.15,-.35,0);bones[2].add(handL);bones[4].add(handR);
+   bone(6,-.07,-.57,.12);bone(8,.07,-.57,.12); // 10/11 ankles: measured from the shin/shoe meshes after turning the model to face -Z (ankle .17 above the sole, .12 behind the knee line)
+   // Hand centre measured from the skin mesh (after the turn to face -Z): (+-.125, -.28, -.20) from the elbow, i.e. the rest forearm points forward-down.
+   const handL=new T.Group(),handR=new T.Group();handL.position.set(-.125,-.28,-.20);handR.position.set(.125,-.28,-.20);bones[2].add(handL);bones[4].add(handR);
    const skeleton=new T.Skeleton(bones);root.updateMatrixWorld(true);
    // Technical outerwear: the suit mesh is reshaped and recoloured per kit, then helmet/hood, goggles, gloves and a logo are added.
    const kit=kitById(outfit.kit),style=kit.style,hem=style==='freeride'?1.12:1.28;
@@ -70,7 +80,6 @@ export function createModelAssets(onReady:()=>void){
       if(!pants&&y<hem+.05)c.copy(style==='shell'?jacketC.clone().multiplyScalar(.7):accentC); // hem / powder skirt trim
       if((!pants&&Math.abs(y-1.98)<.02)||(!pants&&Math.abs(side-.27)<.012)||(pants&&Math.abs(y-.72)<.02))c.multiplyScalar(.72); // taped panel seams
       if(front&&side<.022&&!pants&&y>hem+.05&&y<2.17)c.copy(zipC); // waterproof centre zip
-      if(style==='freeride'&&pants&&Math.abs(side-.29)<.014&&y>.82&&y<1.08)c.copy(zipC); // thigh vents
       colors.push(c.r,c.g,c.b);
       if(front&&Math.abs(x+.12)<.04&&Math.abs(y-1.9)<.04)chestZ=Math.min(chestZ,z);}
      geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();material.map=null;material.normalMap=null;material.vertexColors=true;material.color.set('#ffffff');material.roughness=style==='race'?.45:.8;
@@ -96,29 +105,20 @@ export function createModelAssets(onReady:()=>void){
    add(new T.BoxGeometry(H.r*1.56,.1,.03),std(kit.lens,{metalness:.7,roughness:.12}),H.x,H.y+H.r*.22,H.front-.045);
    // chest logo patch
    const logo=add(new T.PlaneGeometry(.13,.13),new T.MeshBasicMaterial({map:logoTexture(kit.brand),transparent:true}),-.12,1.9,chestZ-.006);logo.rotation.y=Math.PI;logo.castShadow=false;
-   // gloves with contrast cuffs
-   for(const hand of [handL,handR]){add(new T.BoxGeometry(.12,.16,.11),std(kit.glove,{roughness:.9}),0,-.02,0,hand);add(new T.CylinderGeometry(.075,.075,.06,10),std(kit.accent),0,.07,0,hand);}
-   return{root,handL,handR,pose(phase:number,power:number,air:boolean,grab:number,board:boolean,extra=0,moving=false,edge=0,upper={pitch:0,yaw:0,roll:0,balance:0}){
-    bones[9].rotation.set(upper.pitch,upper.yaw,upper.roll);
-    // Skis: double-pole push. Both arms swing together, legs stay parallel and fold on the push.
-    const stride=Math.sin(phase)*power,reach=Math.cos(phase)*power,crouch=air?.1+extra*(grab?.5:.22):Math.max(.1,(board?(moving?.38:.14):.26+Math.max(0,-reach)*.3)+extra*.5);
-    if(grab){ // one hand reaches down for the ski/board, the other flies out for balance
-     bones[1].rotation.set(-.95,0,.3);bones[2].rotation.x=-.35;bones[3].rotation.set(.3,0,.45);bones[4].rotation.x=-.4;
-    }else{
-     if(board){bones[1].rotation.set(-stride*.75,0,.42-(air?.75:moving?.5:0));bones[3].rotation.set(stride*.75,0,-.42+(air?.75:moving?.5:0));}
-     else{const arm=air?-.5:-.35-reach*.9;bones[1].rotation.set(arm,0,.3-(air?.35:0));bones[3].rotation.set(arm,0,-.3+(air?.35:0));}
-     bones[2].rotation.x=bones[4].rotation.x=air?-.6:-.12-(moving&&!board?.35:0);
-    }
-    if(upper.balance&&!grab){bones[1].rotation.z-=.75;bones[3].rotation.z+=.75;} // arms wide on a rail
-    // Snowboard: knees open a little for a wider, athletic stance.
-    bones[5].rotation.set(crouch,0,board?stride*.40-.22:0);bones[7].rotation.set(crouch,0,board?.22:0);
-    // Skis: outside leg long and loaded, inside leg folded and light.
-    if(!board&&!air&&edge){const e=Math.abs(edge),[inL,outL,inK]=edge>0?[5,7,6]:[7,5,8];bones[inL].rotation.x+=.3*e;bones[outL].rotation.x-=.1*e;bones[inK].rotation.x-=.45*e;}
-    bones[5].position.z=board?power*.32:0;bones[7].position.z=0;
-    bones[6].rotation.x=-crouch*1.6-(board?Math.max(0,Math.cos(phase))*power*.35:0);bones[8].rotation.x=-crouch*1.6;
-   },
+   // gloves: a mitten over the real hand, with a contrast cuff over the sleeve end
+   for(const hand of [handL,handR]){const g=add(new T.CapsuleGeometry(.085,.12,4,8),std(kit.glove,{roughness:.9}),0,0,0,hand);g.scale.set(1,1,1.3);add(new T.CylinderGeometry(.097,.097,.06,12),std(kit.accent),0,.13,0,hand);}
+   const mkLeg=(h:number,k:number,a:number,side:number):Leg=>({hip:bones[h],knee:bones[k],ankle:bones[a],hipRest:new T.Vector3(side*.18,0,0),r1:bones[k].position.clone().normalize(),r2:bones[a].position.clone().normalize(),L1:bones[k].position.length(),L2:bones[a].position.length(),soleOff:new T.Vector3(0,-.17,-.125)});
+   const legs:[Leg,Leg]=[mkLeg(5,6,10,-1),mkLeg(7,8,11,1)],pelvis=new T.Vector3(0,1.35,0);
+   const rig:Rig={legs,pelvis,reach:legs[0].L1+legs[0].L2,hands:[handL,handR],
+    movePelvis(x,y,z){pelvis.set(x,y,z);bones[0].position.set(x,y-1.35,z);},
+    setTorso(pitch,yaw,roll){bones[9].rotation.set(pitch,yaw,roll);},
+    // `out` 0 = arm hanging straight down. The rest pose has the arms angled out ~.6, so the shoulder z-rotation is .55 - out.
+    // The rest-pose forearm already points ~.62 forward of the upper arm's line, so `elbow` 0 (straight) means undoing that.
+    setArm(side,a){const s=side?-1:1;bones[side?3:1].rotation.set(a.pitch,s*a.twist,s*(.55-a.out));bones[side?4:2].rotation.set(a.elbow-.62,0,0);}};
+   return{root,handL,handR,rig,
    // Limp, flailing limbs while tumbling. a = flail strength (decays), k = 1 until getting back up.
    flail(e:number,a:number,k:number,seed:number){const w=(f:number,ph:number)=>Math.sin(e*f+seed+ph);
+    bones[0].position.set(0,0,0);bones[10].quaternion.identity();bones[11].quaternion.identity();
     bones[9].rotation.set(w(6,10)*.5*a*k,w(5,11)*.6*a*k,w(7,12)*.4*a*k);
     bones[1].rotation.set((-.6+w(11,0)*1.4*a)*k,0,(.42-.9+w(7,1)*.6*a)*k+.42*(1-k));bones[3].rotation.set((-.6+w(10,2)*1.4*a)*k,0,(-.42+.9+w(8,3)*.6*a)*k-.42*(1-k));
     bones[2].rotation.x=(-.4-Math.abs(w(13,4))*1.1*a)*k-.12*(1-k);bones[4].rotation.x=(-.4-Math.abs(w(12,5))*1.1*a)*k-.12*(1-k);
