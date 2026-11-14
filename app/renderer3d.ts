@@ -8,7 +8,7 @@ import {solveLeg,type Rig,type Leg} from './rig';
 import type {Outfit,Peer,GameSettings} from './game-engine';
 import {groundHeight,LANDMARKS,LIFTS,LAKE,BOUNDS,onTrail,zoneAt,forestAt,type Lift} from './world';
 type Feature={kind:string;x:number;y:number;size:number;id:string;seed:number};
-type Frame={tuck?:number;lift?:number;rail?:boolean;fakie?:boolean;course?:number;edge?:number;skid?:number;absorb?:number;backseat?:number;snow?:string;view:string;settings:GameSettings;x:number;y:number;z:number;angle:number;speed:number;pushPhase:number;pushPower:number;clock:number;bail:number;spin:number;flip:number;grab:number;playing:boolean;outfit:Outfit;features:Feature[];peers:Peer[];particles:{x:number;y:number;z:number;size:number;life:number}[]};
+type Frame={hour?:number;soft?:number;cam?:{mode:string;id:number;t:number};tuck?:number;lift?:number;rail?:boolean;fakie?:boolean;course?:number;edge?:number;skid?:number;absorb?:number;backseat?:number;snow?:string;view:string;settings:GameSettings;x:number;y:number;z:number;angle:number;speed:number;pushPhase:number;pushPower:number;clock:number;bail:number;spin:number;flip:number;grab:number;playing:boolean;outfit:Outfit;features:Feature[];peers:Peer[];particles:{x:number;y:number;z:number;size:number;life:number}[]};
 const S=.05;
 const hash=(n:number)=>{const k=Math.sin(n*127.1+311.7)*43758.5453;return k-Math.floor(k);};
 const ground=groundHeight;
@@ -16,6 +16,15 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor('#accbd2');
  let assetRevision=0,seenAssetRevision=0;const models=createModelAssets(()=>assetRevision++);
+ // Daylight by hour (7:00 and 19:00 match, so the cycle loops without a jump): warm low sun at the ends, bright white at midday, gold in the afternoon.
+ const KEYS:{h:number;sky:string;hemi:string;hemiI:number;sun:string;sunI:number}[]=[
+  {h:7,sky:'#cfb4b0',hemi:'#f2dcd6',hemiI:1.5,sun:'#ffb283',sunI:1.2},{h:9,sky:'#b6d3dc',hemi:'#e9faff',hemiI:2.05,sun:'#ffe6bd',sunI:2.2},
+  {h:12.5,sky:'#accbd2',hemi:'#e9faff',hemiI:2.3,sun:'#fff7e6',sunI:2.8},{h:16,sky:'#c3d0cd',hemi:'#f7efdc',hemiI:2.0,sun:'#ffd28f',sunI:2.35},
+  {h:18,sky:'#d4b4a6',hemi:'#f4dad0',hemiI:1.6,sun:'#ff9d68',sunI:1.6},{h:19,sky:'#cfb4b0',hemi:'#f2dcd6',hemiI:1.5,sun:'#ffb283',sunI:1.2}];
+ const cA=new T.Color(),cB=new T.Color(),LIGHT={sky:new T.Color(),hemiSky:new T.Color(),sun:new T.Color(),hemi:2,sunI:2,dx:25,dy:45};
+ function light(h:number){let i=0;while(i<KEYS.length-2&&h>KEYS[i+1].h)i++;const a=KEYS[i],b=KEYS[i+1],u=Math.max(0,Math.min(1,(h-a.h)/(b.h-a.h)));
+  LIGHT.sky.copy(cA.set(a.sky).lerp(cB.set(b.sky),u));LIGHT.hemiSky.copy(cA.set(a.hemi).lerp(cB.set(b.hemi),u));LIGHT.sun.copy(cA.set(a.sun).lerp(cB.set(b.sun),u));
+  LIGHT.hemi=a.hemiI+(b.hemiI-a.hemiI)*u;LIGHT.sunI=a.sunI+(b.sunI-a.sunI)*u;const t=(h-7)/12;LIGHT.dx=Math.cos(Math.PI*(1-t))*45;LIGHT.dy=14+34*Math.sin(Math.PI*t);return LIGHT;}
  const scene=new T.Scene();scene.fog=new T.Fog('#accbd2',90,260);
  const camera=new T.PerspectiveCamera(57,1,.1,450);
  const hemi=new T.HemisphereLight('#e9faff','#607368',2.2);scene.add(hemi);
@@ -150,17 +159,19 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const previewFloor=new T.Mesh(new T.CircleGeometry(30,48),mat('#40594e'));previewFloor.rotation.x=-Math.PI/2;previewFloor.receiveShadow=true;scene.add(previewFloor);
  const dust=new T.InstancedMesh(sphereGeo,mat('#f4f8e9'),220);dust.instanceMatrix.setUsage(T.DynamicDrawUsage);scene.add(dust);const dummy=new T.Object3D();
  const liftChairs:T.Group[]=[];for(let i=0;i<8;i++){const g=new T.Group();box(g,'#52665d',0,1,0,.06,2,.06);box(g,'#df9c62',0,0,0,1.6,.12,.8);box(g,'#596f65',0,.35,.35,1.6,.7,.08);scene.add(g);liftChairs.push(g);}
- let width=0,height=0,camReady=false,zone=-999,lastClock=0,shake=0,wasBail=false,camHeading=0,lastX=0,lastY=0,lookReady=false;const camLook=new T.Vector3();
+ let width=0,height=0,camReady=false,zone=-999,lastClock=0,shake=0,wasBail=false,camHeading=0,lastX=0,lastY=0,lookReady=false,rcId=-1,rcFirst=true,rcT=performance.now();const rcAnchor=new T.Vector3(),rcPos=new T.Vector3(),rcLook=new T.Vector3();const camLook=new T.Vector3();
  // Ski tracks: one ribbon per ski (one for a board). Thin when carving, wide smears when skidding.
  const trackMat=new T.MeshBasicMaterial({color:'#aebfc2',transparent:true,opacity:.45,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,side:T.DoubleSide});
  type TrackPt={x:number;y:number;z:number;nx:number;nz:number;w:number;gap:boolean};
  const tracks=[0,1].map(()=>{const mesh=new T.Mesh(new T.BufferGeometry(),trackMat);mesh.frustumCulled=false;scene.add(mesh);return{pts:[] as TrackPt[],broken:true,mesh};});
  function layTracks(f:Frame){const board=f.outfit.gear==='snowboard';tracks[1].mesh.visible=!board;
-  if(f.view!=='game'||f.z>0||(f.lift||0)>0||f.bail>0||f.speed<6){for(const t of tracks)t.broken=true;return;}
+  // Deep snow (powder, or warm soft afternoon snow) cuts wider, darker, longer-lasting grooves; firm morning corduroy leaves a thin light line.
+  const depth=f.snow==='powder'?1:f.snow==='ice'?0:(f.soft||0)*.6;trackMat.opacity=.4+.35*depth;trackMat.color.set(depth>.5?'#8da3ac':'#aebfc2');
+  if(f.cam||f.view!=='game'||f.z>0||(f.lift||0)>0||f.bail>0||f.speed<6){for(const t of tracks)t.broken=true;return;}
   const h=f.angle,c=f.course??f.angle,slip=Math.abs(Math.sin(h-c));
   (board?[0]:[-.2,.2]).forEach((o,i)=>{const t=tracks[i],x=f.x*S+Math.cos(h)*o,z=-f.y*S+Math.sin(h)*o,last=t.pts[t.pts.length-1],d=last?Math.hypot(last.x-x,last.z-z):99;
    if(d<.35)return;if(d>40)t.pts=[];
-   t.pts.push({x,z,y:ground(x/S,-z/S)+.07,nx:Math.cos(c),nz:Math.sin(c),w:(board?.28:.07)+slip*(board?1.4:1.1),gap:t.broken||d>4});t.broken=false;if(t.pts.length>400)t.pts.shift();
+   t.pts.push({x,z,y:ground(x/S,-z/S)+.07,nx:Math.cos(c),nz:Math.sin(c),w:((board?.28:.07)+slip*(board?1.4:1.1))*(1+.9*depth),gap:t.broken||d>4});t.broken=false;if(t.pts.length>(depth>.5?800:400))t.pts.shift();
    const v:number[]=[];for(let k=1;k<t.pts.length;k++){const a=t.pts[k-1],b=t.pts[k];if(b.gap)continue;const ax=a.nx*a.w/2,az=a.nz*a.w/2,bx=b.nx*b.w/2,bz=b.nz*b.w/2;
     v.push(a.x-ax,a.y,a.z-az,a.x+ax,a.y,a.z+az,b.x+bx,b.y,b.z+bz,a.x-ax,a.y,a.z-az,b.x+bx,b.y,b.z+bz,b.x-bx,b.y,b.z-bz);}
    t.mesh.geometry.dispose();t.mesh.geometry=new T.BufferGeometry();t.mesh.geometry.setAttribute('position',new T.Float32BufferAttribute(v,3));});}
@@ -307,9 +318,21 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  if(dbg&&!inMenu){const a=f.angle+dbg.yaw;camera.position.set(f.x*S-Math.sin(a)*dbg.dist,py+(f.z+(f.lift||0))*S+dbg.height,-f.y*S+Math.cos(a)*dbg.dist);camera.lookAt(f.x*S,py+(f.z+(f.lift||0))*S+(dbg.look??1.2),-f.y*S);}
  else if(wardrobe)camera.lookAt(f.x*S,py+1.25,-f.y*S);else if(inMenu)camera.lookAt(f.x*S,py+1,-f.y*S-7);else{const want=new T.Vector3(f.x*S+Math.sin(heading)*6,py+.85*(f.z+(f.lift||0))*S+1.3,-f.y*S-Math.cos(heading)*6);if(!lookReady||jumped){camLook.copy(want);lookReady=true;}else camLook.lerp(want,1-Math.exp(-fdt*14));camera.lookAt(camLook);}
  const fov=f.settings.fov+(inMenu?0:Math.min(9,f.speed*.028));if(Math.abs(camera.fov-fov)>.05){camera.fov+=(fov-camera.fov)*.08;camera.updateProjectionMatrix();}
+ // Broadcast replay cameras: a chase cam, a static side cam, a low cam ahead of the rider, an orbit and a wide. Static cams stay put and pan to follow.
+ if(f.cam&&!inMenu){const now=performance.now(),rdt=Math.min(.05,(now-rcT)/1000);rcT=now;const rx=f.x*S,rz=-f.y*S,ry=py+(f.z+(f.lift||0))*S+1,hd=f.course??f.angle,fx=Math.sin(hd),fz=-Math.cos(hd),px=-fz,pz=fx,mode=f.cam.mode,R=new T.Vector3(rx,ry,rz);
+  if(f.cam.id!==rcId){rcId=f.cam.id;rcFirst=true;const sd=Math.sin(rcId*12.9898)>0?1:-1;
+   if(mode==='side')rcAnchor.set(rx+px*sd*10-fx*3,0,rz+pz*sd*10-fz*3);else if(mode==='low')rcAnchor.set(rx+fx*34+px*sd*3,0,rz+fz*34+pz*sd*3);else rcAnchor.set(rx+px*sd*46-fx*14,0,rz+pz*sd*46-fz*14);
+   const g=ground(rcAnchor.x/S,-rcAnchor.z/S);rcAnchor.y=mode==='low'?g+.5:mode==='side'?Math.max(g+.9,ry+1.2):Math.max(g+4,py+16);}
+  if(mode==='orbit'){const a=f.cam.t*.55+rcId;rcPos.set(rx+Math.cos(a)*7.5,ry+2.2,rz+Math.sin(a)*7.5);}
+  else if(mode==='chase'){const want=new T.Vector3(rx-fx*6.8,ry+2.1,rz-fz*6.8);if(rcFirst)rcPos.copy(want);else rcPos.lerp(want,1-Math.exp(-rdt*8));}
+  else rcPos.copy(rcAnchor);
+  rcPos.y=Math.max(rcPos.y,ground(rcPos.x/S,-rcPos.z/S)+.5);
+  if(rcFirst)rcLook.copy(R);else rcLook.lerp(R,1-Math.exp(-rdt*9));rcFirst=false;
+  camera.position.copy(rcPos);camera.lookAt(rcLook);
+  const dist=Math.max(2,rcPos.distanceTo(R)),fv=mode==='chase'?56:mode==='orbit'?50:Math.max(16,Math.min(52,2*Math.atan(2.7/dist)*180/Math.PI));camera.fov=fv;camera.updateProjectionMatrix();}
  if(wardrobe){if(!camera.view?.enabled||camera.view.fullWidth!==w||camera.view.fullHeight!==h)camera.setViewOffset(w,h,-w*.23,0,w,h);}else if(camera.view?.enabled)camera.clearViewOffset();
  const quality=f.settings.quality==='high';renderer.shadowMap.enabled=quality;const pixelRatio=quality?Math.min(window.devicePixelRatio,1.5):.8;if(renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio);
- sun.position.set(f.x*S+25,py+45,-f.y*S+15);sun.target.position.set(f.x*S,py,-f.y*S-15);
+ {const L=light(f.hour??12);scene.fog!.color.copy(L.sky);renderer.setClearColor(L.sky);hemi.color.copy(L.hemiSky);hemi.intensity=L.hemi;sun.color.copy(L.sun);sun.intensity=L.sunI;sun.position.set(f.x*S+L.dx,py+L.dy,-f.y*S+15);}sun.target.position.set(f.x*S,py,-f.y*S-15);
  // Chairs ride whichever lift is nearest the rider.
  {let best:Lift|null=null,bd=1e9;for(const L of LIFTS){if(f.y<L.y1-300||f.y>L.y0+300)continue;const xl=L.x0+(L.x1-L.x0)*(L.y0-f.y)/(L.y0-L.y1),d=Math.abs(f.x-xl);if(d<bd){bd=d;best=L;}}
   liftChairs.forEach((g,i)=>{if(!best||bd>1600||wardrobe){g.visible=false;return;}g.visible=true;const L=best,yy=Math.max(L.y1,Math.min(L.y0,f.y-900+((i*250+f.clock*45)%2000))),xl=L.x0+(L.x1-L.x0)*(L.y0-yy)/(L.y0-L.y1);g.position.set(xl*S,ground(xl,yy)+8.4,-yy*S);g.rotation.z=Math.sin(f.clock+i)*.035;});}

@@ -25,5 +25,5 @@ test('rolling off is a small hop; jumping at the lip is much more, and jumping e
 test('rails and boxes: span, width and naming',()=>{
  const f={x:100,y:1000,size:1,seed:2},rail=railShape(f),box=railShape({...f,seed:3});assert.equal(rail.box,false);assert.equal(box.box,true);assert.ok(box.half>rail.half);
  assert.equal(onRail(f,100,1000),true);assert.equal(onRail(f,100+rail.half+2,1000),false);assert.equal(onRail(f,100,rail.end+1),false);
- assert.equal(grindName(0,false,false),'50–50');assert.equal(grindName(Math.PI/2,true,false),'Boardslide');assert.equal(grindName(Math.PI/2,false,false),'Railslide');assert.equal(grindName(Math.PI,false,true),'Switch 50–50');
+ assert.equal(grindName(0,false,false),'50–50');assert.equal(grindName(-Math.PI/2,true,false),'Lipslide');assert.equal(grindName(-Math.PI/2,false,false),'Lipslide');assert.equal(grindName(Math.PI/2,true,false),'Boardslide');assert.equal(grindName(Math.PI/2,false,false),'Railslide');assert.equal(grindName(Math.PI,false,true),'Switch 50–50');
 });

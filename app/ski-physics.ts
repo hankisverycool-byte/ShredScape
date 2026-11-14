@@ -10,9 +10,10 @@ export const SNOW:Record<Snow,{grip:number;scrape:number;drag:number;label:strin
 // drag = snow friction (constant); air drag grows with speed squared.
 export const GRAVITY=3550,AIR=.0008,PUSH=145,TURN_RATE=1.7;
 export const wrap=(a:number)=>Math.atan2(Math.sin(a),Math.cos(a));
-export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;pushScale?:number;tuck?:number;rand?:()=>number};
+export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;soft?:number;pushScale?:number;tuck?:number;rand?:()=>number};
 export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:number){
- const S=SNOW[inp.snow],rand=inp.rand||Math.random;
+ // Warm afternoon snow (soft, 0..1) is draggier and grips a little less; ice stays hard all day.
+ const S0=SNOW[inp.snow],k=inp.snow==='ice'?0:Math.max(0,Math.min(1,inp.soft||0)),S={...S0,drag:S0.drag*(1+.7*k),grip:S0.grip*(1-.15*k),scrape:S0.scrape*(1+.1*k)},rand=inp.rand||Math.random;
  let {vx,vy,angle}=s;
  const sp0=Math.hypot(vx,vy),course0=sp0>1?Math.atan2(vx,vy):angle;
  // Hockey stop: swing the skis across the direction of travel and brace on the edges.

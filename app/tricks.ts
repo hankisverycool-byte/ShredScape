@@ -1,4 +1,4 @@
-export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number;spinV?:number;flipV?:number;spinMax?:number;flipMax?:number};
+export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number;spinV?:number;flipV?:number;spinMax?:number;flipMax?:number;grinds?:string[];switchups?:number;link?:number};
 export const JUMP={gravity:440,pop:185,ramp:235};
 // Rotation is momentum: keys add spin acceleration, letting go keeps you turning, and how fast you can turn depends on how hard you left the ground.
 // A flat pop only gives about a half turn; a 1080 or a double needs real air off a big kicker.
@@ -22,7 +22,10 @@ export function landingResult(t:TrickState){
  if(flipTurns){const direction=t.flip<0?'Frontflip':'Backflip';names.push((flipTurns>1?flipTurns+'× ':'')+direction);base+=flipTurns*500;}
  if(t.grabTime>.12){names.push(t.grab);base+=Math.round(120+Math.min(t.grabTime,2)*160);}
  // Grinds pay for the lock-on plus distance slid.
- if(t.grinding){names.push(t.grind||'50–50');base+=150+Math.round((t.grindDist||0)*2);}
+ if(t.grinding){const g=t.grinds&&t.grinds.length?t.grinds:[t.grind||'50–50'];names.push(g.join(' → '));base+=150+Math.round((t.grindDist||0)*2)+(g.length-1)*90;}
+ if(t.switchups){names.push((t.switchups>1?t.switchups+'× ':'')+'Switch-up');base+=t.switchups*150;}
+ // Linking: dropping straight from one rail onto the next keeps the run going and pays more each time.
+ if(t.link){names.push('Link ×'+(t.link+1));base+=t.link*200;}
  const multiplier=Math.min(8,1+names.length);
  return{clean,names,base,multiplier,points:clean?base*multiplier:0};
 }

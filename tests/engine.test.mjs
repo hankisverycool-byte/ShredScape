@@ -4,7 +4,7 @@ import {mod} from './helpers.mjs';
 const {createGame}=await mod('app/game-engine.ts');
 const {PARK_FEATURES}=await mod('app/world.ts');
 const {kickerShape,railShape}=await mod('app/park.ts');
-globalThis.window={addEventListener(){},removeEventListener(){}};
+const keyHandlers={};globalThis.window={addEventListener(n,f){keyHandlers[n]=f;},removeEventListener(){}};
 globalThis.localStorage={getItem(){return null},setItem(){}};
 let callback;
 globalThis.requestAnimationFrame=fn=>(callback=fn,1);
@@ -84,4 +84,30 @@ test('rotation is earned by air: a mini kicker allows a turn at most, a gigantic
 test('landing on the back of a kicker rides it down: the mound is solid, not a hollow ramp',()=>{
  const k=pickKicker(2),sh=kickerShape(k),s=setup();s.game.debugPlace(k.x,sh.start-60,0,0,12);for(let i=0;i<4000;i++){s.tick(.005);if(s.game.debugState().y>sh.lip+20)break;}
  const d=s.game.debugState();assert.ok(d.y>sh.lip,'crossed the top');assert.ok(d.lift>0||d.z>0,'still over the back of the mound: lift '+d.lift.toFixed(1)+' z '+d.z.toFixed(1));assert.equal(d.bailed,false);s.game.destroy();
+});
+
+test('on a rail J is a switch-up: it turns you half way round, flipping the slide name, and is banked with the grind',()=>{
+ const f=rails.find(q=>railShape(q).len>=250&&!railShape(q).box),r=railShape(f),s=setup();s.game.debugPlace(f.x,r.start-60,0,0,150);s.tick(.4);
+ assert.equal(s.game.debugState().rail,true);s.game.input('grab',true);s.tick(.05);s.game.input('grab',false);s.tick(.3);const a=Math.abs(s.game.debugState().angle);
+ assert.ok(Math.abs(a-Math.PI)<.3,'angle '+a.toFixed(2));let trick='';for(let i=0;i<400&&!trick.includes('Switch-up');i++){s.tick(.02);trick=s.state.trick||'';}
+ assert.ok(trick.includes('Switch-up'),'trick '+trick);s.game.destroy();
+});
+test('dropping from one rail onto another within two seconds links them',()=>{
+ const [f,g]=rails.filter(q=>!railShape(q).box&&railShape(q).len>=170),r=railShape(f),s=setup();s.game.debugPlace(f.x,r.start-60,0,0,150);s.tick(.4);assert.equal(s.game.debugState().rail,true);
+ for(let i=0;i<300&&s.game.debugState().rail;i++)s.tick(.02);assert.equal(s.game.debugState().rail,false);const rg=railShape(g);s.game.debugPlace(g.x,rg.start-60,0,0,150);s.tick(.4);const d=s.game.debugState();assert.equal(d.rail,true,'on second rail '+JSON.stringify(d));assert.ok(d.chain>=1,'chain '+d.chain);s.game.destroy();
+});
+test('instant replay records the last seconds, plays them back with cuts and slow-mo, and exits',()=>{
+ const s=setup();s.game.debugPlace(2550,500,0,0,150);s.tick(3);
+ assert.equal(s.game.startReplay(),true);s.tick(.2);let r=s.state.replay;assert.ok(r&&r.on&&r.dur>=2.5&&r.cam==='chase','replay '+JSON.stringify(r));assert.ok(globalThis.frameState.cam,'renderer got a replay camera');
+ const before=s.game.debugState().y;s.tick(1);assert.equal(s.game.debugState().y,before,'game is frozen while the replay plays');s.tick(4);assert.ok(s.state.replay.cutId>1,'camera cut');
+ s.game.stopReplay();s.tick(.1);assert.equal(s.state.replay,undefined);s.tick(.5);assert.ok(s.game.debugState().y>before,'play resumes');s.game.destroy();
+});
+test('the replay key is set by the user and fires the replay',()=>{
+ const s=setup();s.game.setSettings({quality:'low',fov:65,sensitivity:1,cameraDistance:10,replayKey:'KeyP'});s.game.debugPlace(2550,500,0,0,150);s.tick(3);
+ keyHandlers.keydown({code:'KeyB',target:{matches:()=>false},preventDefault(){}});s.tick(.1);assert.equal(s.state.replay,undefined);
+ keyHandlers.keydown({code:'KeyP',target:{matches:()=>false},preventDefault(){}});s.tick(.1);assert.equal(s.state.replay?.on,true);s.game.stopReplay();s.game.destroy();
+});
+test('snow warms up through the day and the game clock loops from 7 to 19',()=>{
+ const s=setup();s.game.debugSetHour(9);s.tick(.1);assert.equal(s.state.soft,0);s.game.debugSetHour(16);s.tick(.1);assert.equal(s.state.soft,1);
+ s.game.debugSetHour(18.995);s.tick(1);assert.ok(s.state.hour<8,'wrapped to '+s.state.hour);s.game.destroy();
 });

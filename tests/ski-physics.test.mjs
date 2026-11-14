@@ -45,3 +45,8 @@ test('regular to switch pivot keeps momentum, no instant 180',()=>{
  for(let i=0;i<200&&!(s.fakie&&Math.cos(s.angle-Math.atan2(s.vx,s.vy))<-.95);i++){s=stepSki(s,flat,.01);maxStep=Math.max(maxStep,Math.abs(s.angle-prev));prev=s.angle;}
  assert.equal(s.fakie,true);assert.ok(maxStep<.06);assert.ok(s.speed>60,'kept '+s.speed.toFixed(0));
 });
+
+test('warm soft snow is draggier than firm snow, but ice does not change',()=>{
+ const roll=(snow,soft)=>{let st={vx:0,vy:150,angle:0};for(let i=0;i<200;i++)st=stepSki(st,{steer:0,push:false,brake:false,boost:false,sensitivity:1,gradX:0,gradY:0,snow,soft},.01);return Math.hypot(st.vx,st.vy);};
+ assert.ok(roll('groomed',1)<roll('groomed',0)-3,'soft '+roll('groomed',1)+' firm '+roll('groomed',0));assert.ok(roll('powder',1)<roll('powder',0));assert.equal(roll('ice',1),roll('ice',0));
+});
