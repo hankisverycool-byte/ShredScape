@@ -8,7 +8,7 @@ export const SNOW:Record<Snow,{grip:number;scrape:number;drag:number;label:strin
  ice:{grip:380,scrape:280,drag:5,label:'Ice'},
 };
 // drag = snow friction (constant); air drag grows with speed squared.
-export const GRAVITY=3550,AIR=.0008,PUSH=145,TURN_RATE=1.7;
+export const GRAVITY=4100,AIR=.0008,PUSH=145,TURN_RATE=1.7;
 export const wrap=(a:number)=>Math.atan2(Math.sin(a),Math.cos(a));
 export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;soft?:number;pushScale?:number;tuck?:number;rand?:()=>number};
 export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:number){
@@ -54,7 +54,7 @@ export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:num
  if(inp.snow==='ice'&&carve<.8)w1+=(rand()-.5)*90*dt*(1-carve); // edge chatter
  w=Math.sign(w)*w1;
  vx=u*dx+w*px;vy=u*dy+w*py;
- let sp=Math.hypot(vx,vy);const max=inp.boost?700:520; // cap: ~94 km/h, or ~126 km/h boosting
+ let sp=Math.hypot(vx,vy);const max=inp.boost?800:610; // cap: ~110 km/h, or ~144 km/h boosting
 if(sp>max){vx*=max/sp;vy*=max/sp;sp=max;}
  if(sp<3&&!inp.push&&Math.abs(gAlong)<S.drag){vx=0;vy=0;sp=0;}
  return{vx,vy,angle,speed:sp,course:sp>1?Math.atan2(vx,vy):angle,carve,skid:(1-carve)*flat*Math.min(1,sp/120),slip,latX:w*px,latY:w*py,stopping,fakie:vx*Math.sin(angle)+vy*Math.cos(angle)<0};

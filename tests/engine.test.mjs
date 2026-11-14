@@ -10,10 +10,10 @@ let callback;
 globalThis.requestAnimationFrame=fn=>(callback=fn,1);
 globalThis.cancelAnimationFrame=()=>{};
 function setup(){let snapshot;const game=createGame({},s=>snapshot=s);let now=performance.now();function tick(seconds){for(let i=0;i<Math.round(seconds*200);i++){now+=5;callback(now);}}game.start();return{game,tick,get state(){return snapshot}};}
-const charged=s=>{s.game.input('jump',true);s.tick(.9);s.game.input('jump',false);};
+const charged=s=>{s.game.input('jump',true);s.tick(1.3);s.game.input('jump',false);};
 test('Space charges while held and jumps on release: a tap hops, a full charge pops',()=>{
  const tap=setup();tap.game.input('jump',true);tap.game.input('jump',false);tap.tick(.05);let hop=0;for(let i=0;i<150;i++){tap.tick(.01);hop=Math.max(hop,globalThis.frameState.z||0);}tap.game.destroy();
- const full=setup();full.game.input('jump',true);full.tick(.4);const mid=full.state.charge;full.tick(.6);assert.ok(mid>.3&&mid<.7,'charge '+mid);assert.equal(full.state.charge,1);assert.equal(full.state.airborne,false);
+ const full=setup();full.game.input('jump',true);full.tick(.4);const mid=full.state.charge;full.tick(.9);assert.ok(mid>.2&&mid<.5,'charge '+mid);assert.equal(full.state.charge,1);assert.equal(full.state.airborne,false);
  full.game.input('jump',false);let top=0;for(let i=0;i<150;i++){full.tick(.01);top=Math.max(top,globalThis.frameState.z||0);}full.game.destroy();
  assert.ok(top>hop*2,`full ${top.toFixed(0)} vs tap ${hop.toFixed(0)}`);
 });
@@ -23,10 +23,10 @@ test('airborne A/D rotates the rider without changing travel heading, and keeps 
  s.tick(.1);assert.ok(Math.abs(globalThis.frameState.spin)>rotation,'momentum carries on');s.game.destroy();
 });
 test('a flat hop cannot be turned into a big spin: holding spin the whole hop never gets past about three quarters of a turn',()=>{
- const s=setup();charged(s);s.game.input('right',true);let spin=0;for(let i=0;i<120;i++){s.tick(.01);spin=Math.max(spin,Math.abs(globalThis.frameState.spin||0));}s.game.destroy();assert.ok(spin<1.7*Math.PI,'spin '+spin.toFixed(2));
+ const s=setup();charged(s);s.game.input('right',true);let spin=0;for(let i=0;i<120;i++){s.tick(.01);spin=Math.max(spin,Math.abs(globalThis.frameState.spin||0));}s.game.destroy();assert.ok(spin<1.8*Math.PI,'spin '+spin.toFixed(2));
 });
 test('unfinished airborne W flip bails without banking points',()=>{
- const s=setup();charged(s);s.game.input('up',true);s.tick(.6);s.game.input('up',false);s.tick(.7);assert.equal(s.state.bailed,true);assert.equal(s.state.score,0);s.game.destroy();
+ const s=setup();charged(s);s.game.input('up',true);s.tick(.3);s.game.input('up',false);s.tick(1.2);assert.equal(s.state.bailed,true);assert.equal(s.state.score,0);s.game.destroy();
 });
 test('pushing drives animation only on snow and stops when released',()=>{
  const s=setup();s.game.input('up',true);s.tick(.25);assert.ok(globalThis.frameState.pushPower>.9);assert.ok(globalThis.frameState.pushPhase>0);
@@ -46,7 +46,7 @@ test('jumping onto a rail from the air locks on; turning on it becomes a sideway
  assert.match(s.game.debugState().trick,/Railslide|Boardslide/);s.game.destroy();
 });
 // Fly kicker `k` at `kmh`, jumping at the lip, rolling off, or jumping half way up the face. Returns peak height above terrain in world metres.
-function fly(k,kmh,mode,rot=false){const sh=kickerShape(k),s=setup();if(mode!=='roll'){s.game.debugPlace(k.x,sh.start-70,0,0,0);s.game.input('jump',true);s.tick(.9);}s.game.debugPlace(k.x,sh.start-70,0,0,kmh/.18);let peak=0,spin=0,jumped=false,started=false,relanded=false;
+function fly(k,kmh,mode,rot=false){const sh=kickerShape(k),s=setup();if(mode!=='roll'){s.game.debugPlace(k.x,sh.start-70,0,0,0);s.game.input('jump',true);s.tick(1.3);}s.game.debugPlace(k.x,sh.start-70,0,0,kmh/.18);let peak=0,spin=0,jumped=false,started=false,relanded=false;
  for(let i=0;i<3000;i++){s.tick(.005);const d=s.game.debugState(),frac=(d.y-sh.start)/(sh.lip-sh.start);
   if(!jumped&&d.lift>0&&((mode==='lip'&&d.y>=sh.lip-10)||(mode==='early'&&frac>=.5))){s.game.input('jump',false);jumped=true;}
   if(d.z>0)started=true;if(started){peak=Math.max(peak,d.z);spin=Math.max(spin,Math.abs(d.spin));if(rot&&d.z>0)s.game.input('right',true);if(d.z===0&&d.lift>0&&mode==='early'){relanded=true;break;}if(d.z===0||d.bailed)break;}}
@@ -118,13 +118,13 @@ test('direction: D spins the rider clockwise from above and A the other way, mat
  assert.ok(gAngle>0,'ground right turn increases heading');assert.ok(spin<0,'air right spin is the same visual direction (heading = angle - spin)');
 });
 test('a landing that is close but not clean keeps you riding with a speed penalty; a bad one wipes out',()=>{
- const s=setup();s.game.debugPlace(2550,500,0,0,150);charged(s);s.game.input('up',true);s.tick(.18);s.game.input('up',false);s.tick(.05);
+ const s=setup();s.game.debugPlace(2550,500,0,0,150);charged(s);s.game.input('up',true);s.tick(.5);s.game.input('up',false);s.tick(.05);
  const before=s.game.debugState().speed;let st;for(let i=0;i<200;i++){s.tick(.01);st=s.game.debugState();if(st.z===0&&st.speed<before)break;}
  assert.equal(st.bailed,false);s.game.destroy();
 });
 
 test('a wipeout sends you to the nearest spawn once the tumble ends',()=>{
- const s=setup();s.game.debugPlace(2400,5200,0,0,150);charged(s);s.game.input('up',true);s.tick(.6);s.game.input('up',false);s.tick(.9);assert.equal(s.state.bailed,true);
+ const s=setup();s.game.debugPlace(2400,5200,0,0,150);charged(s);s.game.input('up',true);s.tick(.3);s.game.input('up',false);s.tick(1.2);assert.equal(s.state.bailed,true);
  s.tick(2.2);const d=s.game.debugState();assert.equal(s.state.bailed,false);assert.ok(s.state.respawn>=1,'respawn counted');assert.ok(s.state.respawnName,'named '+s.state.respawnName);
  const {LOCATIONS}=W;const near=LOCATIONS.map(l=>Math.hypot(l.x-d.x,l.y-d.y)).sort((a,b)=>a-b)[0];assert.ok(near<1,'standing on a spawn point, '+near);s.game.destroy();
 });

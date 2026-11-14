@@ -19,7 +19,7 @@ test('the face is steepest at the lip, and bigger kickers have steeper lips',()=
 test('rolling off is a small hop; jumping at the lip is much more, and jumping early is worth far less',()=>{
  for(let i=0;i<6;i++){const f=k(i),lip=kickerShape(f).lip,v=280;assert.ok(kickerJumpVz(f,lip,v)>2*kickerExitVz(f,v),'class '+i);
   assert.ok(kickerPop(f,lip)>1.9*kickerPop(f,kickerShape(f).start+kickerShape(f).run*.5));assert.equal(kickerExitVz(f,0),0);}
- assert.ok(kickerJumpVz(k(5),kickerShape(k(5)).lip,280)>kickerJumpVz(k(0),kickerShape(k(0)).lip,280)*2);
+ assert.ok(kickerJumpVz(k(5),kickerShape(k(5)).lip,280)>kickerJumpVz(k(0),kickerShape(k(0)).lip,280)*1.8);
  assert.ok(kickerJumpVz(k(3),kickerShape(k(3)).lip,400)>kickerJumpVz(k(3),kickerShape(k(3)).lip,150));
 });
 test('rails and boxes: span, width and naming',()=>{

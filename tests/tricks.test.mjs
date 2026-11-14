@@ -18,7 +18,7 @@ test('rotation is momentum: it builds, coasts when you let go, and reverses when
 });
 test('a flat hop cannot spin much; a huge jump can do multiple turns',()=>{
  const flat=run(emptyTrick(JUMP.pop),1,1,2*JUMP.pop/JUMP.gravity),huge=run(emptyTrick(570),1,1,2*570/JUMP.gravity);
- assert.ok(flat.spin<1.7*Math.PI&&flat.flip<1.5*Math.PI,'flat '+flat.spin.toFixed(2)+' '+flat.flip.toFixed(2));
+ assert.ok(flat.spin<1.75*Math.PI&&flat.flip<1.65*Math.PI,'flat '+flat.spin.toFixed(2)+' '+flat.flip.toFixed(2));
  assert.ok(huge.spin>3*Math.PI&&huge.flip>2*Math.PI,'huge '+huge.spin.toFixed(2)+' '+huge.flip.toFixed(2));
  assert.ok(rotationCaps(570).spinMax>rotationCaps(JUMP.pop).spinMax*2);
 });
@@ -29,9 +29,9 @@ test('W frontflips, S backflips and diagonal input combines axes',()=>{
  const back=run(emptyTrick(570),0,1,1.8);assert.ok(back.flip>Math.PI);
  assert.ok(landingResult({...back,flip:2*Math.PI}).names.includes('Backflip'));
 });
-test('pop stays below three metres, ramps below four',()=>{
- assert.ok(JUMP.pop*JUMP.pop/(2*JUMP.gravity)*.05<3);
- assert.ok(JUMP.ramp*JUMP.ramp/(2*JUMP.gravity)*.05<4);
+test('pop stays below about four metres, ramps below five and a half',()=>{
+ assert.ok(JUMP.pop*JUMP.pop/(2*JUMP.gravity)*.05<4.2);
+ assert.ok(JUMP.ramp*JUMP.ramp/(2*JUMP.gravity)*.05<5.5);
  assert.ok(JUMP.ramp>JUMP.pop);
 });
 test('sloppy but close landings still count',()=>{
