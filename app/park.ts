@@ -6,12 +6,12 @@ export type Spot={x:number;y:number;size:number;seed:number};
 // taller and have a steeper lip, so they send you higher at the same speed; `landing` is the clear run-out the park layout leaves after the lip.
 export type KickerClass={name:string;run:number;half:number;height:number;landing:number;color:string};
 export const KICKER_CLASSES:KickerClass[]=[
- {name:'MINI',run:36,half:20,height:8,landing:150,color:'#7cc97a'},
- {name:'SMALL',run:60,half:28,height:18,landing:260,color:'#5fb8d9'},
- {name:'MEDIUM',run:90,half:36,height:32,landing:420,color:'#e6c24a'},
- {name:'LARGE',run:140,half:48,height:58,landing:700,color:'#ee8b3a'},
- {name:'HUGE',run:210,half:64,height:100,landing:1100,color:'#d6453b'},
- {name:'GIGANTIC',run:320,half:90,height:180,landing:1700,color:'#8a4bd1'},
+ {name:'MINI',run:36,half:40,height:8,landing:150,color:'#7cc97a'},
+ {name:'SMALL',run:60,half:56,height:18,landing:260,color:'#5fb8d9'},
+ {name:'MEDIUM',run:90,half:72,height:32,landing:420,color:'#e6c24a'},
+ {name:'LARGE',run:140,half:96,height:58,landing:700,color:'#ee8b3a'},
+ {name:'HUGE',run:210,half:128,height:100,landing:1100,color:'#d6453b'},
+ {name:'GIGANTIC',run:320,half:180,height:180,landing:1700,color:'#8a4bd1'},
 ];
 export const KICKER={lipAt:16,curve:1.6,maxLaunchSpeed:420,back:1.1,backCurve:1.5};
 // How long you hold Space to fully charge a jump, and how much a jump with no charge keeps.
@@ -22,7 +22,7 @@ export const kickerClass=(f:Spot)=>KICKER_CLASSES[kickerIndex(f)];
 export function kickerShape(f:Spot){const c=kickerClass(f),lip=f.y+KICKER.lipAt;return{start:lip-c.run,lip,run:c.run,half:c.half,height:c.height};}
 // Height of the kicker surface under (x,y); 0 when not on it.
 // A kicker is a mound of snow: the face rises to the lip, the back slopes down to the ground, and the sides round off into the hill.
-const side=(f:Spot,x:number)=>{const k=kickerShape(f),u=(Math.abs(x-f.x)/k.half-.5)/.5;if(u<=0)return 1;if(u>=1)return 0;return 1-u*u*(3-2*u);};
+const side=(f:Spot,x:number)=>{const k=kickerShape(f),u=Math.abs(x-f.x)/k.half;if(u>=1)return 0;return Math.pow((1+Math.cos(Math.PI*u))/2,.55);}; // broad rounded crown that melts into the hill
 export function kickerLift(f:Spot,x:number,y:number){const k=kickerShape(f);if(y<k.start||y>k.lip)return 0;return side(f,x)*k.height*Math.pow((y-k.start)/k.run,KICKER.curve);}
 export function kickerBack(f:Spot){return kickerShape(f).run*KICKER.back;}
 // Full surface including the back slope: what you land on when you come down past the lip.

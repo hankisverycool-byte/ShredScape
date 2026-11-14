@@ -35,7 +35,7 @@ function ensureMap(cb:()=>void){
   ctx.strokeStyle='#27322d';ctx.lineWidth=1.2;ctx.setLineDash([5,3]);for(const L of LIFTS){ctx.beginPath();ctx.moveTo(...toMap(L.x0,L.y0));ctx.lineTo(...toMap(L.x1,L.y1));ctx.stroke();}ctx.setLineDash([]);
   // park features: kickers in their size colour, rails/boxes as bars
   for(const f of PARK_FEATURES){const [mx,my]=toMap(f.x,f.y);
-   if(f.kind==='ramp'){const c=kickerClass(f);ctx.fillStyle='#e8762c';ctx.strokeStyle='#10201a';ctx.lineWidth=1;const w=Math.max(2.5,c.half*PX*.9),h=Math.max(2.5,c.run*PX*.5);ctx.beginPath();ctx.moveTo(mx-w,my-h);ctx.lineTo(mx+w,my-h);ctx.lineTo(mx+w*.6,my+h);ctx.lineTo(mx-w*.6,my+h);ctx.closePath();ctx.fill();ctx.stroke();}
+   if(f.kind==='ramp'){const c=kickerClass(f);ctx.fillStyle='#e8762c';ctx.strokeStyle='#10201a';ctx.lineWidth=1;const w=Math.max(2.5,c.half*PX*.9),h=Math.max(2.5,c.run*PX*.5);ctx.beginPath();ctx.ellipse(mx,my,w,h,0,0,7);ctx.fill();ctx.stroke();}
    else if(f.kind==='rail'){const r=railShape(f);ctx.strokeStyle=r.box?'#d6453b':'#e0a63c';ctx.lineWidth=r.box?3:2;ctx.beginPath();ctx.moveTo(mx,my-r.len*PX/2);ctx.lineTo(mx,my+r.len*PX/2);ctx.stroke();}}
   // timed course gates
   for(const g of [COURSE.start,...COURSE.gates]){const [gx,gy]=toMap(g.x,g.y),hw=g.w*PX/2;ctx.lineWidth=g.kind==='gate'?3:4;ctx.strokeStyle=g.kind==='gate'?(g.n%2?'#d6453b':'#2f6fd1'):'#13261e';ctx.beginPath();ctx.moveTo(gx-hw,gy);ctx.lineTo(gx+hw,gy);ctx.stroke();}

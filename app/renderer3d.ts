@@ -63,10 +63,10 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  if(f.kind==='tree')tree(g,f.size,f.seed);else if(f.kind==='rock')mesh(sphereGeo,'#7c918a',g,[0,.4,0],[1.1*f.size,.8*f.size,.9*f.size]);
  else if(f.kind==='ramp'){
  // Snow kicker: a solid mound pushed up out of the hillside. Face to the lip, rounded top, back sloping down, sides rolling into the slope.
- const k=kickerShape(f),g0=ground(f.x,f.y),back=kickerBack(f),y0=k.start-k.run*.12,y1=k.lip+back,NX=14,NY=Math.max(12,Math.round((y1-y0)/10)),pos:number[]=[];
- const V=(i:number,j:number)=>{const lx=(i/NX*2-1)*k.half*1.18,wy=y0+j/NY*(y1-y0),lift=kickerSurface(f,f.x+lx,wy);return[lx*S,ground(f.x+lx,wy)-g0+lift*S-.04,-(wy-f.y)*S];};
- for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const a=V(i,j),b=V(i+1,j),c2=V(i+1,j+1),d=V(i,j+1);pos.push(...a,...c2,...b,...a,...d,...c2);}
- const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(pos,3));geo.computeVertexNormals();
+ const k=kickerShape(f),g0=ground(f.x,f.y),back=kickerBack(f),y0=k.start-k.run*.15,y1=k.lip+back,NX=24,NY=Math.max(16,Math.round((y1-y0)/9)),pos:number[]=[],idx:number[]=[];
+ for(let j=0;j<=NY;j++)for(let i=0;i<=NX;i++){const lx=(i/NX*2-1)*k.half*1.05,wy=y0+j/NY*(y1-y0),lift=kickerSurface(f,f.x+lx,wy);pos.push(lx*S,ground(f.x+lx,wy)-g0+lift*S-.03,-(wy-f.y)*S);}
+ for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const a=j*(NX+1)+i,b2=a+1,c2=a+NX+1,d=c2+1;idx.push(a,c2,b2,b2,c2,d);}
+ const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(pos,3));geo.setIndex(idx);geo.computeVertexNormals();
  const snow=new T.Mesh(geo,mat('#f3f7f5'));snow.material.side=T.DoubleSide;snow.receiveShadow=true;snow.castShadow=true;g.add(snow);
  }
  else if(f.kind==='rail'){
