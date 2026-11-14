@@ -79,7 +79,10 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  // Landing tilted back on a flip: the skis shoot forward ("backseat"). Rideable, but costs balance.
  const lean=tricks.flip-Math.round(tricks.flip/(Math.PI*2))*Math.PI*2;if(result.clean&&lean>.5){backseat=1;vx+=Math.sin(angle)*35;vy+=Math.cos(angle)*35;}
  // The air spin becomes the new heading: a 180 lands switch, with no snap back to forward.
- if(!fromRail)angle-=tricks.spin;z=0;vz=0;jumpCooldown=.25;if(!result.clean){wipeout();return;}combo=result.base;multiplier=result.multiplier;score+=result.points;creditsEarned+=Math.floor(result.points/100);best=Math.max(best,score);try{localStorage.setItem('shredscape-best',String(best));}catch{}trick=result.names.join(' + ')||'Clean landing';landing=result.points?'BANKED +'+result.points:'Clean landing';bankTime=2.5;grace=.45;spray(12);tricks=emptyTrick();}
+ if(!fromRail)angle-=(result.clean||result.sketchy)?Math.round(tricks.spin/Math.PI)*Math.PI:tricks.spin;z=0;vz=0;jumpCooldown=.25;
+ if(result.sketchy){ // close, but not clean: keep riding at a cost in speed instead of wiping out
+  vx*=.55;vy*=.55;speed*=.55;absorb=1;const pts=Math.round(result.base*Math.max(1,result.multiplier-1)*.5);score+=pts;creditsEarned+=Math.floor(pts/100);best=Math.max(best,score);trick=(result.names.join(' + ')||'Landing')+' · sketchy';landing='SKETCHY · SPEED LOST'+(pts?' · +'+pts:'');combo=0;multiplier=1;bankTime=1.2;grace=.45;spray(14);tricks=emptyTrick();return;}
+ if(!result.clean){wipeout();return;}combo=result.base;multiplier=result.multiplier;score+=result.points;creditsEarned+=Math.floor(result.points/100);best=Math.max(best,score);try{localStorage.setItem('shredscape-best',String(best));}catch{}trick=result.names.join(' + ')||'Clean landing';landing=result.points?'BANKED +'+result.points:'Clean landing';bankTime=2.5;grace=.45;spray(12);tricks=emptyTrick();}
  const keys:Record<string,string>={KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',Space:'jump',KeyJ:'grab',KeyH:'grabtype',KeyR:'restart',ShiftLeft:'boost'};
  function reset(){run=idleRun();lift=0;rail=null;kicker=null;back=false;charging=false;charge=0;x=START.x;y=START.y;z=0;angle=0;speed=0;vx=0;vy=0;fakie=false;score=0;combo=0;multiplier=1;tricks=emptyTrick();bail=0;grace=1;features=nearby(x,y);pressed.clear();landing='';emit();}
  function input(action:string,down:boolean){action=keys[action]||action;const already=pressed.has(action);if(down)pressed.add(action);else pressed.delete(action);if(action==='jump'&&!down&&charging){charging=false;const c=charge;charge=0;jump(c);return;}if(!down||already)return;if(action==='restart'){reset();return;}if(action==='jump'){if(bail>.35&&bail<BAIL-.6)bail=.35;else if(z===0&&!bail&&!jumpCooldown){charging=true;charge=0;}}if(action==='grab'&&rail&&!swivel){swivel=Math.PI*(Math.sin(angle)>=0?-1:1);tricks.switchups=(tricks.switchups||0)+1;}if(z>0){if(action==='grabtype'){const names=['Indy','Mute','Tail grab','Nose grab'];tricks.grab=names[(names.indexOf(tricks.grab)+1)%names.length];}}}
@@ -124,7 +127,11 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
   else if(speed>45&&Math.abs(Math.cos(course))>.5){const pad=Math.max(5,speed*dt*1.3),r=features.find(f=>f.kind==='rail'&&onRail(f,x,y,pad));if(r){rail=r;tricks=emptyTrick();combo=0;multiplier=1;landing='';grace=1;linkIn();}}
   }
  }
- if(z>0){vz-=JUMP.gravity*dt;z+=vz*dt;tricks=advanceAirTrick(tricks,steer,Number(pressed.has('down'))-Number(pressed.has('up')),dt);if(pressed.has('grab'))tricks.grabTime+=dt;const preview=landingResult(tricks);combo=preview.base;multiplier=preview.multiplier;trick=preview.names.join(' + ')||'AIR TIME';
+ if(z>0){vz-=JUMP.gravity*dt;z+=vz*dt;const flipIn=Number(pressed.has('down'))-Number(pressed.has('up'));tricks=advanceAirTrick(tricks,-steer,flipIn,dt);
+  // Landing assist: on the way down, with no key held, the rotation settles toward the nearest clean landing, harder the closer you are.
+  if(vz<0&&z<60){const k=Math.min(1,dt*7),sT=Math.round(tricks.spin/Math.PI)*Math.PI,fT=Math.round(tricks.flip/(Math.PI*2))*Math.PI*2,sE=Math.abs(tricks.spin-sT),fE=Math.abs(tricks.flip-fT);
+   if(!steer&&sE<1.5){tricks.spin+=(sT-tricks.spin)*k*(1.2-sE/1.5);tricks.spinV=(tricks.spinV||0)*Math.exp(-6*dt);}
+   if(!flipIn&&fE<1.7){tricks.flip+=(fT-tricks.flip)*k*(1.2-fE/1.7);tricks.flipV=(tricks.flipV||0)*Math.exp(-6*dt);}}if(pressed.has('grab'))tricks.grabTime+=dt;const preview=landingResult(tricks);combo=preview.base;multiplier=preview.multiplier;trick=preview.names.join(' + ')||'AIR TIME';
   // Coming down onto a rail: lock on. The spin so far becomes your stance on the rail; an unfinished flip still wipes out.
   const r=vz<0?features.find(f=>f.kind==='rail'&&onRail(f,x,y,4)&&z<=railShape(f).height+3):undefined;
   if(r){const flipErr=Math.abs(tricks.flip-Math.round(tricks.flip/(Math.PI*2))*Math.PI*2);

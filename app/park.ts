@@ -35,7 +35,7 @@ export const ROLL_OFF=.4;
 export function kickerExitVz(f:Spot,vy:number){return ROLL_OFF*Math.max(0,Math.min(vy,KICKER.maxLaunchSpeed))*kickerSlope(f,kickerShape(f).lip);}
 // Jumping off the face: you keep the surface's upward speed and add a pop. The pop is full strength at the lip and fades
 // the earlier you jump (down to 35% a third of the way up the face), so timing the jump at the lip is what makes big air.
-export function kickerPop(f:Spot,y:number,charge=1){const k=kickerShape(f),q=1-.65*Math.max(0,Math.min(1,(k.lip-y)/(k.run*.35)));return (110+14*kickerIndex(f))*q*chargeMul(charge);}
+export function kickerPop(f:Spot,y:number,charge=1){const k=kickerShape(f),q=1-.65*Math.max(0,Math.min(1,(k.lip-y)/(k.run*.35)));return (140+18*kickerIndex(f))*q*chargeMul(charge);}
 export function kickerJumpVz(f:Spot,y:number,vy:number,charge=1){return Math.max(0,Math.min(vy,KICKER.maxLaunchSpeed))*kickerSlope(f,y)+kickerPop(f,y,charge);}
 
 // Rail (round bar) or box (wide, lower, easier). Runs along y, centred on the feature.

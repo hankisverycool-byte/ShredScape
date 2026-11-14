@@ -243,9 +243,8 @@ kbd{font:700 11px var(--disp);letter-spacing:.8px;color:var(--ink);padding:2px 7
  .toast{top:112px;width:88%;font-size:14px}
 }
 
-.charge{position:absolute;left:0;bottom:130px;display:flex;flex-direction:column;align-items:center;gap:6px;font:700 11px var(--disp);letter-spacing:3px;color:var(--muted)}
-.charge>div{width:16px;height:120px;background:#0a0e12e6;box-shadow:inset 0 0 0 1px var(--line-2);display:flex;align-items:flex-end;clip-path:polygon(0 4px,4px 0,100% 0,100% 100%,0 100%)}
-.charge i{display:block;width:100%;background:linear-gradient(0deg,var(--cyan),var(--accent-2));transition:none}.charge i.full{background:var(--accent);animation:gatepulse .35s infinite}
+.charge{position:absolute;left:50%;top:50%;width:150px;height:4px;transform:translate(-50%,-50%);background:#ffffff26;pointer-events:none;border-radius:2px;z-index:3}
+.charge i{position:absolute;left:50%;top:0;bottom:0;transform:translateX(-50%);background:#fff;border-radius:2px;box-shadow:0 0 8px #0008}.charge i.full{background:var(--accent);box-shadow:0 0 12px var(--accent);animation:gatepulse .35s infinite}
 
 /* ---------- time of day chip, replay prompt ---------- */
 .timechip{position:absolute;top:254px;right:24px;width:168px;padding:6px 12px;background:#0a0e12e0;clip-path:var(--card);--cut:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;font:700 12px var(--disp);letter-spacing:2px;color:var(--muted)}
