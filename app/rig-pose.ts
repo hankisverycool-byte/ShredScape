@@ -3,7 +3,7 @@
 // (both measured from a straight, hanging arm); `out` is how far the arm is raised outward from hanging straight down.
 // Torso pitch is the opposite way round (the torso pivots at the waist): torsoPitch < 0 folds forward.
 export type Arm={pitch:number;out:number;elbow:number;twist:number};
-export type PoseIn={speed:number;push:number;phase:number;tuck:number;air:boolean;airT:number;land:number;grab:boolean;edge:number;skid:number;fakie:boolean;board:boolean;rail:boolean;absorb:number;release:number;breath:number};
+export type PoseIn={speed:number;push:number;phase:number;tuck:number;air:boolean;airT:number;land:number;grab:boolean;grabStyle?:number;edge:number;skid:number;fakie:boolean;board:boolean;rail:boolean;absorb:number;release:number;breath:number};
 export type PoseOut={
  flex:number;hipBack:number;hipSide:number;
  torsoPitch:number;torsoYaw:number;torsoRoll:number;
@@ -55,7 +55,10 @@ export function computePose(i:PoseIn):PoseOut{
  if(i.air)A=mixArm(A,{pitch:.35,out:-.35,elbow:.5,twist:0},airT);
  if(i.rail)A={pitch:.2,out:-.8,elbow:.35,twist:0};
  let armL:Arm={...A,out:A.out-i.edge*.12},armR:Arm={...A,out:A.out+i.edge*.12}; // inside arm lifts a little in a carve
- if(i.grab&&i.air){armL={pitch:1.0,out:.25,elbow:.35,twist:0};armR={pitch:.15,out:-.7,elbow:.3,twist:0};} // one hand to the gear, the other out for balance
+ if(i.grab&&i.air){const g=i.grabStyle||0;
+  // Indy: front hand to the toe edge between the feet. Mute: front hand across to the other edge. Tail: rear hand reaching back. Nose: front hand reaching forward.
+  if(g===1)armL={pitch:1.12,out:-.1,elbow:.3,twist:0};else if(g===2)armL={pitch:.9,out:.45,elbow:.4,twist:0};else if(g===3)armL={pitch:1.3,out:.1,elbow:.2,twist:0};else armL={pitch:1.0,out:.25,elbow:.35,twist:0};
+  armR={pitch:.15,out:-.7,elbow:.3,twist:0};} // one hand to the gear, the other out for balance
  // --- poles (skis only): tilt > 0 puts the tips behind the hand
  let poleTilt=lerp(-.05,1.0,glide),polePlant=1-glide,poleOut=lerp(.22,.12,glide);
  poleTilt=lerp(poleTilt,lerp(.7,-.45,u),i.push);polePlant=lerp(polePlant,1,i.push);poleOut=lerp(poleOut,.15,i.push);

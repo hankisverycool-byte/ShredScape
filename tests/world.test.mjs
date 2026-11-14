@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mod} from './helpers.mjs';
 const W=await mod('app/world.ts'),P=await mod('app/park.ts'),R=await mod('app/race.ts');
-const {BOUNDS,ZONES,TRAILS,LOCATIONS,LIFTS,LAKE,START,PARK_FEATURES,MOUNTAINS,groundHeight,trailX,zoneAt,onTrail,snowAt,featuresNear,regionAt}=W;
+const {BOUNDS,ZONES,TRAILS,LOCATIONS,LIFTS,START,PARK_FEATURES,MOUNTAINS,groundHeight,trailX,zoneAt,onTrail,snowAt,featuresNear,regionAt}=W;
 const slope=(x,y)=>Math.hypot((groundHeight(x+4,y)-groundHeight(x-4,y))/8,(groundHeight(x,y+4)-groundHeight(x,y-4))/8);
 test('four mountains and five park zones',()=>{
  assert.equal(MOUNTAINS.length,4);assert.deepEqual(MOUNTAINS.map(m=>m.name),['Snowmass','Buttermilk','Aspen Highlands','Aspen Mountain']);
@@ -13,7 +13,7 @@ test('four mountains and five park zones',()=>{
 test('the terrain is finite everywhere, falls to the valley, and the arrival points are flat',()=>{
  for(let x=BOUNDS.minX;x<=BOUNDS.maxX;x+=370)for(let y=BOUNDS.minY;y<=BOUNDS.maxY;y+=550)assert.ok(Number.isFinite(groundHeight(x,y)));
  assert.ok(groundHeight(2550,-900)-groundHeight(2550,9900)>250,'total drop');
- for(const l of LOCATIONS)if(l.kind!=='lake')assert.ok(slope(l.x,l.y)<.02,l.name+' slope '+slope(l.x,l.y).toFixed(3));
+ for(const l of LOCATIONS)assert.ok(slope(l.x,l.y)<.02,l.name+' slope '+slope(l.x,l.y).toFixed(3));
  assert.ok(slope(START.x,START.y)<.02);
 });
 test('every trail has sensible length and slope and stays in the world',()=>{
@@ -21,8 +21,8 @@ test('every trail has sensible length and slope and stays in the world',()=>{
   for(let y=a;y<=b;y+=100){const x=trailX(t,y);assert.ok(Number.isFinite(x)&&x>BOUNDS.minX&&x<BOUNDS.maxX,t.name+' x at '+y);assert.ok(slope(x,y)<.3,t.name+' too steep at '+y);}
   assert.equal(trailX(t,a-1),null);assert.equal(trailX(t,b+1),null);}
 });
-test('snow: trails and parks are groomed, off-piste is powder, the lake is ice',()=>{
- assert.equal(snowAt(LAKE.x,LAKE.y),'ice');assert.equal(snowAt(2300,5200),'groomed');assert.equal(snowAt(3500,4000),'powder');assert.equal(onTrail(-1275,5000),true);assert.equal(onTrail(1750,9300),true);
+test('snow: trails and parks are groomed, off-piste is powder',()=>{
+ assert.equal(snowAt(2300,5200),'groomed');assert.equal(snowAt(3500,4000),'powder');assert.equal(onTrail(-1275,5000),true);assert.equal(onTrail(1750,9300),true);
 });
 test('every park feature is inside its own zone, and kickers have room to land',()=>{
  const zoneOf={butter:'butter-park',snow:'snowmass-park',air:'big-air',yard:'rail-yard',core:'aspen-town'};

@@ -18,9 +18,7 @@ export const ZONES:Zone[]=[
  {id:'aspen-town',name:'Aspen Town',kind:'town',x0:1350,y0:9000,x1:2150,y1:9900,color:'#ed9a6c',desc:'The base village, the gondola and the Core Rail Jam in the plaza.'},
  {id:'highland-bowl',name:'Highland Bowl',kind:'bowl',x0:150,y0:-400,x1:850,y1:1800,color:'#d5e5df',desc:'Steep, wide-open alpine bowl above the trees. Ungroomed.'},
  {id:'big-burn',name:'The Big Burn',kind:'bowl',x0:-3500,y0:1000,x1:-2350,y1:4600,color:'#a5bb87',desc:'Huge open slopes with scattered glades.'},
- {id:'maroon-lake',name:'Maroon Lake',kind:'lake',x0:740,y0:2240,x1:1260,y1:2760,color:'#84bdcf',desc:'A frozen lake. Edges barely grip.'},
 ];
-export const LAKE={x:1000,y:2500,r:260};
 const rectDist=(z:Zone,x:number,y:number)=>Math.hypot(Math.max(z.x0-x,0,x-z.x1),Math.max(z.y0-y,0,y-z.y1));
 const PARKS=ZONES.filter(z=>z.kind==='park');
 // Smallest zone containing the point (a park inside a mountain wins over the mountain).
@@ -48,7 +46,7 @@ function raw(x:number,y:number){
  for(const r of RIDGES)h+=fade*r.h*Math.exp(-((x-r.x)**2)/(2*r.s*r.s)); // ridges between the mountains, fading out into the valley
  for(const p of PEAKS)h+=p.h*Math.exp(-((x-p.x)**2/(2*p.sx*p.sx)+(y-p.y)**2/(2*p.sy*p.sy)));
  const calm=(1-.85*parkInfluence(x,y))*(1-smooth(.8,.9,t)); // rolling relief, quiet in parks and flat in the valley
- h+=calm*(2.2*Math.sin(x*.0017+y*.0009)+1.1*Math.sin(x*.0038-y*.0019+1.3)+.4*Math.sin(x*.0083+y*.0047));
+ h+=calm*(1.5*Math.sin(x*.0014+y*.0008)+.5*Math.sin(x*.003-y*.0016+1.3));
  return h+Math.max(0,Math.abs(x)-3300)*.03; // the outer walls
 }
 // ---------- places ----------
@@ -58,7 +56,6 @@ export const LOCATIONS:Location[]=[
  {id:'highland-bowl',name:'Highland Bowl',x:480,y:450,color:'#84bdcf',kind:'bowl',description:'Steep, wide-open alpine bowl above the trees.'},
  {id:'buttermilk',name:'Buttermilk Summit',x:-1300,y:1500,color:'#e6c88b',kind:'summit',description:'Friendly cruisers, and the way down to the park.'},
  {id:'big-burn',name:'Snowmass · Big Burn',x:-2900,y:1500,color:'#a5bb87',kind:'bowl',description:'Huge open slopes and glades.'},
- {id:'maroon-lake',name:'Maroon Lake',x:1000,y:2500,color:'#84bdcf',kind:'lake',description:'A frozen lake in the trees. Edges barely grip.'},
  {id:'butter-park',name:'Buttermilk Park',x:-1275,y:4260,color:'#7cc97a',kind:'park',description:'Minis and smalls to learn on, a rail line, and a large at the end.'},
  {id:'snowmass-park',name:'Snowmass Park',x:-2875,y:5460,color:'#e6c24a',kind:'park',description:'Mediums and larges, and the long rail garden.'},
  {id:'big-air',name:'Highlands Big Air',x:525,y:3760,color:'#8a4bd1',kind:'park',description:'Mini to GIGANTIC. Two lines, built for speed.'},
@@ -67,8 +64,8 @@ export const LOCATIONS:Location[]=[
  {id:'snowmass-village',name:'Snowmass Village',x:-2750,y:9200,color:'#a5bb87',kind:'town',description:'Fanny Hill, lodges and the Elk Camp Gondola.'},
 ];
 export const START={x:2550,y:350};
-// Flat pads so every arrival point is a place you can stand still, and the frozen lake.
-const FLATS:{x:number;y:number;r:number;drop:number;h:number}[]=[...LOCATIONS.filter(l=>l.kind!=='lake').map(l=>({x:l.x,y:l.y,r:l.kind==='park'?110:150,drop:0,h:0})),{x:LAKE.x,y:LAKE.y,r:LAKE.r,drop:-3,h:0}];
+// Flat pads so every arrival point is a place you can stand still.
+const FLATS:{x:number;y:number;r:number;drop:number;h:number}[]=[...LOCATIONS.map(l=>({x:l.x,y:l.y,r:l.kind==='park'?110:150,drop:0,h:0}))];
 for(const f of FLATS)f.h=raw(f.x,f.y)+f.drop;
 export function groundHeight(x:number,y:number){
  let h=raw(x,y);
@@ -113,8 +110,8 @@ export function onTrail(x:number,y:number){
  for(const tr of TRAILS){const c=trailX(tr,y);if(c!==null&&Math.abs(x-c)<tr.w/2)return true;}
  return false;
 }
-// The frozen lake is ice, pisted terrain is groomed, everything else is powder.
-export function snowAt(x:number,y:number):'groomed'|'powder'|'ice'{return Math.hypot(x-LAKE.x,y-LAKE.y)<LAKE.r?'ice':onTrail(x,y)?'groomed':'powder';}
+// Pisted terrain is groomed, everything else is powder.
+export function snowAt(x:number,y:number):'groomed'|'powder'|'ice'{return onTrail(x,y)?'groomed':'powder';}
 
 // ---------- landmarks and lifts ----------
 export type Landmark={kind:'village'|'lodge'|'parkgate'|'lake';x:number;y:number;name:string;count?:number;r?:number};
@@ -123,7 +120,6 @@ export const LANDMARKS:Landmark[]=[
  {kind:'village',x:-1300,y:9300,name:'BUTTERMILK BASE',count:4},{kind:'village',x:450,y:9300,name:'HIGHLANDS BASE',count:4},
  {kind:'lodge',x:2300,y:430,name:'SUNDECK'},{kind:'lodge',x:700,y:560,name:'CLOUD NINE'},{kind:'lodge',x:-2680,y:1590,name:'ELK CAMP'},{kind:'lodge',x:-1080,y:1590,name:'SUMMIT HUT'},
  ...PARKS.map(z=>({kind:'parkgate' as const,x:(z.x0+z.x1)/2,y:z.y0+30,name:z.name.toUpperCase(),r:(z.x1-z.x0)/2})),
- {kind:'lake',x:LAKE.x,y:LAKE.y,name:'MAROON LAKE',r:LAKE.r},
 ];
 export type Lift={id:string;name:string;x0:number;y0:number;x1:number;y1:number};
 export const LIFTS:Lift[]=[ // bottom -> top
@@ -138,8 +134,10 @@ export type Feature={kind:'tree'|'rock'|'ramp'|'rail'|'flag'|'gate'|'start'|'fin
 // Forest density 0..1: none above the treeline and in the bowls, thickest low down, in patches, thin in the Big Burn glades.
 export function forestAt(x:number,y:number){
  const z=zoneAt(x,y);if(z&&z.kind==='bowl'&&z.id==='highland-bowl')return 0;
- const alt=smooth(2300,3500,y),n=.5+.5*Math.sin(x*.0017+y*.0009)*Math.sin(x*.0011-y*.0014+2);
- return alt*(.3+.7*n)*(z&&z.id==='big-burn'?.18:1)*(1-smooth(9000,9400,y));
+ const alt=smooth(2000,3000,y),n=.5+.5*Math.sin(x*.0017+y*.0009)*Math.sin(x*.0011-y*.0014+2);
+ // Glades: long, winding open lanes through the forest with just a few scattered trees, running downhill like tree runs.
+ const lane=Math.sin(x*.0046+Math.sin(y*.0013)*2.2+Math.sin(y*.0004)*3),glade=smooth(.35,.7,lane);
+ return Math.min(1,alt*(.62+.55*n)*(1-.8*glade)*(z&&z.id==='big-burn'?.25:1)*(1-smooth(9000,9400,y)));
 }
 const nearLandmark=(x:number,y:number)=>LANDMARKS.some(l=>(l.kind==='village'||l.kind==='lodge')&&Math.hypot(x-l.x,y-l.y)<(l.kind==='village'?380:130));
 export const PARK_FEATURES:Feature[]=[];
@@ -162,14 +160,14 @@ railLine('core',1750,9150,[[1,true],[1.3,false],[1,true]],80);railLine('core',16
 
 export function featuresNear(x:number,y:number){
  const out:Feature[]=[];
- const c0=Math.floor((x-1500)/200),c1=Math.ceil((x+1500)/200),r0=Math.floor((y-1300)/200),r1=Math.ceil((y+1700)/200);
+ const c0=Math.floor((x-1500)/160),c1=Math.ceil((x+1500)/160),r0=Math.floor((y-1300)/160),r1=Math.ceil((y+1700)/160);
  for(let row=r0;row<=r1;row++)for(let col=c0;col<=c1;col++){
-  const seed=row*577+col*79,px=col*200+(hash(seed)-.5)*120,py=row*200+hash(seed+2)*120;
+  const seed=row*577+col*79,px=col*160+(hash(seed)-.5)*110,py=row*160+hash(seed+2)*110;
   if(Math.abs(px-x)>1500||px<BOUNDS.minX||px>BOUNDS.maxX||py<BOUNDS.minY||py>BOUNDS.maxY)continue;
-  if(onTrail(px,py)||zoneAt(px,py)?.kind==='lake'||nearLandmark(px,py))continue;
+  if(onTrail(px,py)||nearLandmark(px,py))continue;
   const f=forestAt(px,py);
   if(hash(seed+3)<f)out.push({kind:'tree',x:px,y:py,size:.8+hash(seed+8)*.6,seed,id:'n'+row+':'+col});
-  else if(f<.12&&hash(seed+5)<.16)out.push({kind:'rock',x:px,y:py,size:1.1+hash(seed+8)*1.3,seed,id:'n'+row+':'+col});
+  else if(f<.12&&hash(seed+5)<.07)out.push({kind:'rock',x:px,y:py,size:1.1+hash(seed+8)*1.3,seed,id:'n'+row+':'+col});
  }
  for(const f of PARK_FEATURES)if(Math.abs(f.x-x)<=1500&&f.y>=y-1700&&f.y<=y+2100)out.push(f);
  return out;

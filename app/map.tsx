@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useRef,useState} from 'react';
-import {BOUNDS,LOCATIONS,ZONES,TRAILS,MOUNTAINS,LIFTS,PARK_FEATURES,LAKE,groundHeight,trailX} from './world';
+import {BOUNDS,LOCATIONS,ZONES,TRAILS,MOUNTAINS,LIFTS,PARK_FEATURES,groundHeight,trailX} from './world';
 import {COURSE} from './race';
 import {railShape,kickerClass} from './park';
 
@@ -26,8 +26,6 @@ function ensureMap(cb:()=>void){
    let r=232,g=240,b=236;r-=forest*70;g-=forest*38;b-=forest*58;if(steep){r-=40;g-=34;b-=26;}
    const k=1+shade,o=(py*W+px)*4;img.data[o]=r*k;img.data[o+1]=g*k;img.data[o+2]=b*k;img.data[o+3]=255;}
   ctx.putImageData(img,0,0);
-  // ice
-  ctx.fillStyle='#b5dcea';ctx.beginPath();ctx.arc(...toMap(LAKE.x,LAKE.y),LAKE.r*PX,0,7);ctx.fill();
   // trails, coloured by difficulty
   ctx.lineCap='round';for(const t of TRAILS){ctx.strokeStyle='#ffffffcc';ctx.lineWidth=t.w*PX+2;ctx.beginPath();let first=true;for(let y=t.pts[0][0];y<=t.pts[t.pts.length-1][0];y+=60){const xx=trailX(t,y)!,[mx,my]=toMap(xx,y);if(first){ctx.moveTo(mx,my);first=false;}else ctx.lineTo(mx,my);}ctx.stroke();
    ctx.strokeStyle=LEVEL[t.level]+'bb';ctx.lineWidth=Math.max(2,t.w*PX*.28);ctx.stroke();}
@@ -51,7 +49,7 @@ export function WorldMap({x,y,angle,onTravel}:{x:number;y:number;angle:number;on
   <svg viewBox={`-40 -24 ${W+80} ${H+48}`} role="img" aria-label="Aspen valley map">
    {cacheUrl?<image href={cacheUrl} width={W} height={H}/>:<rect width={W} height={H} fill="#dfe9e4"/>}
    {MOUNTAINS.map(m=>{const [mx,my]=toMap(m.x,-560);return <text key={m.id} className="map-mtn" x={mx} y={my} textAnchor="middle">{({snowmass:'SNOWMASS',buttermilk:'BUTTERMILK',highlands:'HIGHLANDS',aspen:'ASPEN MTN'} as Record<string,string>)[m.id]}</text>;})}
-   {ZONES.filter(z=>z.kind!=='lake').map(z=>{const [x0,y0]=toMap(z.x0,z.y0),[x1,y1]=toMap(z.x1,z.y1);return <g key={z.id}><rect className={'map-zone '+z.kind} x={x0} y={y0} width={x1-x0} height={y1-y0} stroke={z.color} fill={z.color}/><text className="map-zone-label" x={(x0+x1)/2} y={y0-4} textAnchor="middle">{z.name}</text></g>;})}
+   {ZONES.map(z=>{const [x0,y0]=toMap(z.x0,z.y0),[x1,y1]=toMap(z.x1,z.y1);return <g key={z.id}><rect className={'map-zone '+z.kind} x={x0} y={y0} width={x1-x0} height={y1-y0} stroke={z.color} fill={z.color}/><text className="map-zone-label" x={(x0+x1)/2} y={y0-4} textAnchor="middle">{z.name}</text></g>;})}
    {LOCATIONS.map(l=>{const [lx,ly]=toMap(l.x,l.y);return <g key={l.id} className="map-pin" transform={`translate(${lx},${ly})`} onClick={()=>onTravel(l.id)} role="button" aria-label={'Travel to '+l.name}><circle r="7" fill={l.color} stroke="#13261e" strokeWidth="2.5"/></g>;})}
    <g transform={`translate(${px},${py}) ${arrow(angle)}`}><path d="M0,-13 L9,9 L0,4 L-9,9 Z" fill="#ee7f4a" stroke="#fff" strokeWidth="2.5"/></g>
   </svg>

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mod} from './helpers.mjs';
 const {createGame}=await mod('app/game-engine.ts');
-const {PARK_FEATURES}=await mod('app/world.ts');
+const W=await mod('app/world.ts');const {PARK_FEATURES}=W;
 const {kickerShape,railShape}=await mod('app/park.ts');
 const keyHandlers={};globalThis.window={addEventListener(n,f){keyHandlers[n]=f;},removeEventListener(){}};
 globalThis.localStorage={getItem(){return null},setItem(){}};
@@ -22,8 +22,8 @@ test('airborne A/D rotates the rider without changing travel heading, and keeps 
  const rotation=Math.abs(globalThis.frameState.spin);assert.ok(rotation>.2&&rotation<3,'spin '+rotation);assert.equal(globalThis.frameState.angle,0);
  s.tick(.1);assert.ok(Math.abs(globalThis.frameState.spin)>rotation,'momentum carries on');s.game.destroy();
 });
-test('a flat hop cannot be turned into a big spin: holding spin the whole hop never gets past a half turn (plus a little)',()=>{
- const s=setup();charged(s);s.game.input('right',true);let spin=0;for(let i=0;i<120;i++){s.tick(.01);spin=Math.max(spin,Math.abs(globalThis.frameState.spin||0));}s.game.destroy();assert.ok(spin<1.25*Math.PI,'spin '+spin.toFixed(2));
+test('a flat hop cannot be turned into a big spin: holding spin the whole hop never gets past about three quarters of a turn',()=>{
+ const s=setup();charged(s);s.game.input('right',true);let spin=0;for(let i=0;i<120;i++){s.tick(.01);spin=Math.max(spin,Math.abs(globalThis.frameState.spin||0));}s.game.destroy();assert.ok(spin<1.7*Math.PI,'spin '+spin.toFixed(2));
 });
 test('unfinished airborne W flip bails without banking points',()=>{
  const s=setup();charged(s);s.game.input('up',true);s.tick(.6);s.game.input('up',false);s.tick(.7);assert.equal(s.state.bailed,true);assert.equal(s.state.score,0);s.game.destroy();
@@ -121,4 +121,21 @@ test('a landing that is close but not clean keeps you riding with a speed penalt
  const s=setup();s.game.debugPlace(2550,500,0,0,150);charged(s);s.game.input('up',true);s.tick(.18);s.game.input('up',false);s.tick(.05);
  const before=s.game.debugState().speed;let st;for(let i=0;i<200;i++){s.tick(.01);st=s.game.debugState();if(st.z===0&&st.speed<before)break;}
  assert.equal(st.bailed,false);s.game.destroy();
+});
+
+test('a wipeout sends you to the nearest spawn once the tumble ends',()=>{
+ const s=setup();s.game.debugPlace(2400,5200,0,0,150);charged(s);s.game.input('up',true);s.tick(.6);s.game.input('up',false);s.tick(.9);assert.equal(s.state.bailed,true);
+ s.tick(2.2);const d=s.game.debugState();assert.equal(s.state.bailed,false);assert.ok(s.state.respawn>=1,'respawn counted');assert.ok(s.state.respawnName,'named '+s.state.respawnName);
+ const {LOCATIONS}=W;const near=LOCATIONS.map(l=>Math.hypot(l.x-d.x,l.y-d.y)).sort((a,b)=>a-b)[0];assert.ok(near<1,'standing on a spawn point, '+near);s.game.destroy();
+});
+test('Q and E in the air cross or scissor the skis and are scored; on a board they are a method and a stalefish',()=>{
+ for(const [gear,names] of [['skis',['Cross','Scissor']],['snowboard',['Method','Stalefish']]]){
+  const s=setup();s.game.setOutfit({jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear});s.game.debugPlace(2550,500,0,0,60);charged(s);s.game.input('crossL',true);s.game.input('crossR',true);s.tick(.4);
+  assert.ok(globalThis.frameState.cross>.8&&globalThis.frameState.scissor>.8,'pose amounts '+globalThis.frameState.cross);
+  const t=s.state.trick;for(const n of names)assert.ok(t.includes(n),gear+' trick '+t);s.game.destroy();}
+});
+test('challenge feats are queued for the page: air height, spin, speed',()=>{
+ const feats=[];const s=(()=>{let snapshot;const game=createGame({},n=>{snapshot=n;feats.push(...(n.feats||[]));});let now=performance.now();game.start();return{game,tick(sec){for(let i=0;i<Math.round(sec*200);i++){now+=5;callback(now);}}};})();
+ s.game.debugPlace(2550,500,0,0,150);s.tick(1);s.game.input('jump',true);s.tick(.9);s.game.input('jump',false);s.game.input('right',true);s.tick(.2);s.game.input('right',false);s.tick(2);
+ const types=feats.map(f=>f.type);assert.ok(types.includes('land'),'feats '+JSON.stringify(feats));assert.ok(feats.find(f=>f.type==='air').value>1);s.game.destroy();
 });

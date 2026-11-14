@@ -1,9 +1,12 @@
 import * as T from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type {Outfit} from './game-engine';
+import {helmetById,drawHelmetLogo,type Helmet} from './drops';
 import {kitById,drawLogo,BRANDS,type Brand} from './kits';
 import type {Rig,Leg} from './rig';
 const logos=new Map<Brand,T.CanvasTexture>();
+const hLogos=new Map<string,T.CanvasTexture>();
+function helmetLogoTexture(h:Helmet){let t=hLogos.get(h.id);if(!t){const c=document.createElement('canvas');c.width=c.height=128;drawHelmetLogo(c.getContext('2d')!,h.logo,128,h.accent,'#00000000');t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;hLogos.set(h.id,t);}return t;}
 function logoTexture(b:Brand){let t=logos.get(b);if(!t){const c=document.createElement('canvas');c.width=c.height=128;drawLogo(c.getContext('2d')!,b,128,BRANDS[b].ink,'#00000055');t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;logos.set(b,t);}return t;}
 
 type Template = T.Group;
@@ -89,20 +92,31 @@ export function createModelAssets(onReady:()=>void){
    const H=headInfo(),kitGear=new T.Group();kitGear.position.y=-1.45;bones[9].add(kitGear);
    const std=(c:string,o:Partial<T.MeshStandardMaterialParameters>={})=>new T.MeshStandardMaterial({color:c,roughness:.6,...o});
    const add=(g:T.BufferGeometry,mat:T.Material,x:number,y:number,z:number,parent:T.Object3D=kitGear)=>{const m=new T.Mesh(g,mat);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;};
-   if(style==='freeride'){
+   // Head gear. Freeride kits wear a beanie and hood; everything else (and any limited-drop helmet) gets a proper shell: rounded crown, front peak,
+   // ear pads, a stripe over the top, and a curved goggle lens on a strap instead of a box stuck to the face.
+   const design=helmetById(outfit.helmet),lensCol=design?design.lens:kit.lens;
+   if(style==='freeride'&&!design){
     add(new T.SphereGeometry(H.r*1.08,16,10,0,Math.PI*2,0,Math.PI*.5),std(kit.accent,{roughness:1}),H.x,H.y+H.r*.32,H.z);
     add(new T.CylinderGeometry(H.r*1.1,H.r*1.1,.07,18),std(kit.accent,{roughness:1}),H.x,H.y+H.r*.32,H.z);
     // hood up over the beanie, open at the face
     add(new T.SphereGeometry(H.r*1.3,16,12,Math.PI*1.5+1.05,Math.PI*2-2.1,0,Math.PI*.6),std(outfit.jacket,{roughness:.85,side:T.DoubleSide}),H.x,H.y+H.r*.2,H.z+.05);
    }else{
-    const helmet=add(new T.SphereGeometry(H.r*1.14,18,12,0,Math.PI*2,0,Math.PI*.52),std(outfit.hat,{roughness:.35}),H.x,H.y+H.r*.28,H.z);
-    if(style==='race'){helmet.scale.set(1,1,1.25);helmet.position.z+=.04;}
+    const shellC=design?design.shell:outfit.hat,stripeC=design?design.stripe:kit.accent,fin=design?.finish||'gloss';
+    const shellMat=std(shellC,fin==='chrome'?{roughness:.2,metalness:.55}:fin==='matte'?{roughness:.9}:{roughness:.3}),stripeMat=std(stripeC,{roughness:.4}),dark=std('#15191b',{roughness:.8});
+    const R=H.r*1.12,zs=style==='race'?1.28:1.1,cy=H.y+H.r*.2,cz=H.z+H.r*.06;
+    const shell=add(new T.SphereGeometry(R,24,14,0,Math.PI*2,0,Math.PI*.5),shellMat,H.x,cy,cz);shell.scale.set(1,.96,zs);
+    // front peak over the goggles, and ear pads
+    const peak=add(new T.BoxGeometry(R*1.25,.03,R*.5),shellMat,H.x,cy+R*.2,H.front-R*.02);peak.rotation.x=-.28;
+    for(const sx of [-1,1]){const ear=add(new T.SphereGeometry(H.r*.3,10,8),dark,H.x+sx*R*.97,H.y-H.r*.04,H.z+H.r*.1);ear.scale.set(.55,1,.95);}
+    // stripes over the top, front to back (one centre stripe on a stock helmet, a pair on a drop helmet)
+    for(const x of (design?[-.3,.3]:[0])){const rr=Math.sqrt(Math.max(.0001,(R*.99)**2-(x*R)**2)),t=add(new T.TorusGeometry(rr,.017,6,32,Math.PI),stripeMat,H.x+x*R,cy,cz);t.rotation.y=Math.PI/2;t.scale.set(zs,.96,1);}
     add(new T.CylinderGeometry(.15,.17,.13,14),std(outfit.jacket,{roughness:.85}),H.x,H.minY+.02,H.z+.01); // storm collar
+    if(design){for(const sx of [-1,1]){const d=add(new T.PlaneGeometry(.17,.17),new T.MeshBasicMaterial({map:helmetLogoTexture(design),transparent:true}),H.x+sx*(R*1.012),cy+R*.08,cz+.04);d.rotation.y=sx*Math.PI/2;d.castShadow=false;}}
    }
-   // goggles: strap around the head, framed mirrored lens over the eyes
-   add(new T.CylinderGeometry(H.r*1.17,H.r*1.17,.055,20,1,true),std(kit.accent,{side:T.DoubleSide}),H.x,H.y+H.r*.22,H.z);
-   add(new T.BoxGeometry(H.r*1.7,.13,.07),std('#14181a'),H.x,H.y+H.r*.22,H.front-.01);
-   add(new T.BoxGeometry(H.r*1.56,.1,.03),std(kit.lens,{metalness:.7,roughness:.12}),H.x,H.y+H.r*.22,H.front-.045);
+   // goggles: a strap round the head and a curved mirrored lens in a dark frame over the eyes
+   {const gy=H.y+H.r*.2,lr=(H.z-H.front)+.045,strapR=Math.sqrt((H.r*1.12)**2-(H.r*.06)**2)*1.02,strap=add(new T.CylinderGeometry(strapR,strapR,.055,28,1,true),std(design?design.accent:kit.accent,{side:T.DoubleSide,roughness:.7}),H.x,H.y+H.r*.28,H.z+H.r*.06);strap.scale.z=style==='race'?1.28:1.1;
+    add(new T.CylinderGeometry(lr,lr,.17,22,1,true,Math.PI-.78,1.56),std('#14181a',{side:T.DoubleSide}),H.x,gy,H.z);
+    add(new T.CylinderGeometry(lr+.014,lr+.014,.125,22,1,true,Math.PI-.7,1.4),std(lensCol,{metalness:.6,roughness:.12,side:T.DoubleSide}),H.x,gy,H.z);}
    // chest logo patch
    const logo=add(new T.PlaneGeometry(.13,.13),new T.MeshBasicMaterial({map:logoTexture(kit.brand),transparent:true}),-.12,1.9,chestZ-.006);logo.rotation.y=Math.PI;logo.castShadow=false;
    // gloves: a mitten over the real hand, with a contrast cuff over the sleeve end

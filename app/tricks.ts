@@ -1,8 +1,8 @@
-export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number;spinV?:number;flipV?:number;spinMax?:number;flipMax?:number;grinds?:string[];switchups?:number;link?:number};
+export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number;spinV?:number;flipV?:number;spinMax?:number;flipMax?:number;grinds?:string[];switchups?:number;link?:number;crossTime?:number;scissorTime?:number;board?:boolean};
 export const JUMP={gravity:440,pop:215,ramp:250};
 // Rotation is momentum: keys add spin acceleration, letting go keeps you turning, and how fast you can turn depends on how hard you left the ground.
 // A flat pop only gives about a half turn; a 1080 or a double needs real air off a big kicker.
-export const AIR_CONTROL={spinAccel:12,flipAccel:13,spinBase:3.8,flipBase:4,spinGain:9.5,flipGain:11,damp:.12,vzRef:[200,620] as [number,number]};
+export const AIR_CONTROL={spinAccel:19,flipAccel:15,spinBase:5.2,flipBase:4.6,spinGain:11,flipGain:11.5,damp:.12,vzRef:[200,620] as [number,number]};
 export const rotationCaps=(vz0:number)=>{const q=Math.max(0,Math.min(1,(vz0-AIR_CONTROL.vzRef[0])/(AIR_CONTROL.vzRef[1]-AIR_CONTROL.vzRef[0])));return{spinMax:AIR_CONTROL.spinBase+AIR_CONTROL.spinGain*q,flipMax:AIR_CONTROL.flipBase+AIR_CONTROL.flipGain*q};};
 export function emptyTrick(vz0=0):TrickState{return{spin:0,flip:0,grabTime:0,grab:'Indy',grinding:false,names:[],spinV:0,flipV:0,...rotationCaps(vz0)};}
 // Signed input accelerates the rotation; no input just lets it coast (with a little drag), so you can't snap-spin out of nowhere.
@@ -21,6 +21,9 @@ export function landingResult(t:TrickState){
  if(spinTurns){names.push((spinTurns*180)+'°');base+=spinTurns*180;}
  if(flipTurns){const direction=t.flip<0?'Frontflip':'Backflip';names.push((flipTurns>1?flipTurns+'× ':'')+direction);base+=flipTurns*500;}
  if(t.grabTime>.12){names.push(t.grab);base+=Math.round(120+Math.min(t.grabTime,2)*160);}
+ // Q / E tricks: skis crossed or scissored (on a board: method / stalefish). Hold them for a moment to count.
+ if((t.crossTime||0)>.15){names.push(t.board?'Method':'Cross');base+=100+Math.round(Math.min(t.crossTime||0,2)*150);}
+ if((t.scissorTime||0)>.15){names.push(t.board?'Stalefish':'Scissor');base+=100+Math.round(Math.min(t.scissorTime||0,2)*150);}
  // Grinds pay for the lock-on plus distance slid.
  if(t.grinding){const g=t.grinds&&t.grinds.length?t.grinds:[t.grind||'50–50'];names.push(g.join(' → '));base+=150+Math.round((t.grindDist||0)*2)+(g.length-1)*90;}
  if(t.switchups){names.push((t.switchups>1?t.switchups+'× ':'')+'Switch-up');base+=t.switchups*150;}

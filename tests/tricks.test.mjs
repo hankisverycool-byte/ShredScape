@@ -18,7 +18,7 @@ test('rotation is momentum: it builds, coasts when you let go, and reverses when
 });
 test('a flat hop cannot spin much; a huge jump can do multiple turns',()=>{
  const flat=run(emptyTrick(JUMP.pop),1,1,2*JUMP.pop/JUMP.gravity),huge=run(emptyTrick(570),1,1,2*570/JUMP.gravity);
- assert.ok(flat.spin<1.25*Math.PI&&flat.flip<1.25*Math.PI,'flat '+flat.spin.toFixed(2)+' '+flat.flip.toFixed(2));
+ assert.ok(flat.spin<1.7*Math.PI&&flat.flip<1.5*Math.PI,'flat '+flat.spin.toFixed(2)+' '+flat.flip.toFixed(2));
  assert.ok(huge.spin>3*Math.PI&&huge.flip>2*Math.PI,'huge '+huge.spin.toFixed(2)+' '+huge.flip.toFixed(2));
  assert.ok(rotationCaps(570).spinMax>rotationCaps(JUMP.pop).spinMax*2);
 });
