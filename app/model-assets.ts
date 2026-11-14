@@ -11,13 +11,23 @@ function logoTexture(b:Brand){let t=logos.get(b);if(!t){const c=document.createE
 
 type Template = T.Group;
 export function createModelAssets(onReady:()=>void){
- const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;
+ const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;let goggleParts:{strap:T.BufferGeometry;frame:T.BufferGeometry;lens:T.BufferGeometry}|null=null;let helmetParts:{shell:T.BufferGeometry;liner:T.BufferGeometry|null;pads:T.BufferGeometry|null}|null=null;const paintCache=new Map<string,T.BufferGeometry>();
  const resources=new Set<T.BufferGeometry|T.Material|T.Texture>();
  function track(g:T.Object3D){g.traverse(o=>{if(o instanceof T.Mesh){resources.add(o.geometry);o.geometry.userData.assetShared=true;for(const m of Array.isArray(o.material)?o.material:[o.material]){resources.add(m);m.userData.assetShared=true;for(const value of Object.values(m))if(value instanceof T.Texture)resources.add(value);}}});}
  function bake(mesh:T.Mesh,matrix=mesh.matrixWorld){const out=new T.Mesh(mesh.geometry.clone().applyMatrix4(matrix),mesh.material);out.name=mesh.name;out.castShadow=true;out.receiveShadow=true;return out;}
  function fit(group:T.Group,size:number,axis:'x'|'y'|'z'){const box=new T.Box3().setFromObject(group),center=box.getCenter(new T.Vector3()),scale=size/box.getSize(new T.Vector3())[axis];for(const m of group.children as T.Mesh[]){m.geometry.translate(-center.x,-box.min.y,-center.z);m.geometry.scale(scale,scale,scale);}track(group);return group;}
  async function load(url:string,prepare:(scene:T.Group)=>void){try{const gltf=await loader.loadAsync(url);if(disposed){gltf.scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});return;}gltf.scene.updateMatrixWorld(true);track(gltf.scene);prepare(gltf.scene);onReady();}catch(e){console.warn('Model could not load; using built-in fallback.',url,e);}}
  void load('/models/snowy-trees.glb',scene=>{scene.traverse(o=>{if(o instanceof T.Mesh){const g=new T.Group();g.add(bake(o));trees.push(fit(g,5,'y'));}});});
+ // Ski helmet (CC BY 4.0, see model-credits): baked, turned so the opening faces -Z like the rider, and normalised to width 1 with its rim at y=0.
+ void load('/models/ski-helmet.glb',scene=>{const turn=new T.Matrix4().makeRotationY(Math.PI),parts:Record<string,T.BufferGeometry>={};
+  scene.traverse(o=>{if(o instanceof T.Mesh)parts[o.name]=o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(turn);});
+  const shell=parts.Object_3;if(!shell)return;shell.computeBoundingBox();const bb=shell.boundingBox!,k=1/(bb.max.x-bb.min.x),cx=(bb.min.x+bb.max.x)/2,cz=(bb.min.z+bb.max.z)/2;
+  for(const g of Object.values(parts)){g.translate(-cx,-bb.min.y,-cz);g.scale(k,k,k);g.userData.assetShared=true;}
+  helmetParts={shell,liner:parts.Object_2||null,pads:parts.Object_4||null};});
+ // Goggles (CC BY 4.0, see model-credits), thinned out to ~9k triangles: frame, strap and lens. Turned to face -Z and centred on the middle of the head.
+ void load('/models/ski-goggles.glb',scene=>{const turn=new T.Matrix4().makeRotationY(Math.PI),parts:Record<string,T.BufferGeometry>={};
+  scene.traverse(o=>{if(o instanceof T.Mesh&&['strap','frame','lens'].includes(o.name))parts[o.name]=o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(turn);});
+  if(!parts.frame||!parts.lens||!parts.strap)return;for(const g of Object.values(parts)){g.translate(0,-1.684,-.005);g.userData.assetShared=true;}goggleParts={strap:parts.strap,frame:parts.frame,lens:parts.lens};});
  void load('/models/eli-snowboard.glb',scene=>{const g=new T.Group();scene.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o));});board=fit(g,2.2,'x');});
  void load('/models/skis/scene.gltf',scene=>{const g=new T.Group();// Raw ski mesh has bindings on -Y; flip so they face up and the tip points forward (-Z).
  scene.getObjectByName('Ski_L')?.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o,new T.Matrix4().makeRotationX(Math.PI)));});skis=fit(g,2.2,'z');
@@ -48,6 +58,9 @@ export function createModelAssets(onReady:()=>void){
   // top ~0.34 of the body mesh is the head (skull + face), above the neck
   for(let i=0;i<skin.count;i++){v.fromBufferAttribute(skin,i);if(v.y>top-.34&&Math.abs(v.x)<.25)b.expandByPoint(v);}
   const c=b.getCenter(new T.Vector3()),sz=b.getSize(new T.Vector3());return head={x:c.x,y:c.y,z:c.z,r:Math.max(sz.x,sz.z)/2,front:b.min.z,minY:b.min.y};}
+ // Paint the helmet shell with vertex colours: a base colour plus stripes and bands, chosen by design. Cached per look.
+ function paintedShell(key:string,paint:(x:number,y:number,z:number,c:T.Color)=>void,base:string){let g=paintCache.get(key);if(g)return g;const src=helmetParts!.shell;g=src.clone();g.userData.assetShared=true;const pos=g.attributes.position,col:number[]=[],c=new T.Color();
+  for(let i=0;i<pos.count;i++){c.set(base);paint(pos.getX(i),pos.getY(i),pos.getZ(i),c);col.push(c.r,c.g,c.b);}g.setAttribute('color',new T.Float32BufferAttribute(col,3));paintCache.set(key,g);return g;}
  function clone(template:Template|null){return template?.clone(true)||null;}
  return{
   tree(seed:number){return trees.length?clone(trees[Math.abs(Math.floor(seed))%trees.length]):null;},
@@ -100,6 +113,24 @@ export function createModelAssets(onReady:()=>void){
     add(new T.CylinderGeometry(H.r*1.1,H.r*1.1,.07,18),std(kit.accent,{roughness:1}),H.x,H.y+H.r*.32,H.z);
     // hood up over the beanie, open at the face
     add(new T.SphereGeometry(H.r*1.3,16,12,Math.PI*1.5+1.05,Math.PI*2-2.1,0,Math.PI*.6),std(outfit.jacket,{roughness:.85,side:T.DoubleSide}),H.x,H.y+H.r*.2,H.z+.05);
+   }else if(helmetParts){
+    // The real helmet model, scaled to the head, with the design painted on as vertex colours and a mark on each side.
+    const fin=design?.finish||'gloss',shellC=design?design.shell:outfit.hat,stripeC=design?design.stripe:kit.accent,accC=design?design.accent:kit.accent;
+    const W=H.r*2.7,top=2*H.y-H.minY,y0=top+H.r*.2-1.03*W,cz=H.z+H.r*.12;
+    const geo=paintedShell((design?.id||'stock')+shellC+stripeC+accC,(x,y,z,c)=>{
+     const ang=Math.atan2(z,x),sc=new T.Color(stripeC),ac=new T.Color(accC);
+     if(!design){if(Math.abs(x)<.035&&y>.4)c.copy(sc);return;}
+     if(design.id==='redstag'){if(Math.abs(Math.abs(x)-.14)<.034&&y>.42)c.copy(sc);else if(y>.355&&y<.41)c.copy(ac);}
+     else if(design.id==='voltchrome'){if(Math.abs(x)<.05&&y>.4)c.copy(sc);else if(Math.abs(x)>.46&&y>.45&&y<.75&&Math.sin(y*38+ang*2)>.2)c.copy(sc);}
+     else if(design.id==='glacierghost'){if(Math.abs(x)<.1&&y>.4)c.copy(sc);else if(y>.36&&y<.4)c.copy(ac);}
+     else{const edge=.46+.1*Math.sin(ang*6+y*4);if(y<edge&&y>.3)c.copy(y<edge-.07?ac:sc);else if(Math.abs(x)<.03&&y>.5)c.copy(sc);}
+    },shellC);
+    const grp=new T.Group();grp.position.set(H.x,y0,cz);grp.scale.setScalar(W);kitGear.add(grp);
+    const shellMesh=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,color:'#ffffff',roughness:fin==='chrome'?.18:fin==='matte'?.85:.32,metalness:fin==='chrome'?.55:0,side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}));shellMesh.castShadow=true;grp.add(shellMesh);
+    if(helmetParts.liner){const lm=std('#1a1e21',{roughness:.95,side:T.DoubleSide});lm.polygonOffset=true;lm.polygonOffsetFactor=4;lm.polygonOffsetUnits=4;grp.add(new T.Mesh(helmetParts.liner,lm));}
+    if(helmetParts.pads){const pm=std('#262c30',{roughness:.9,side:T.DoubleSide});pm.polygonOffset=true;pm.polygonOffsetFactor=3;pm.polygonOffsetUnits=3;grp.add(new T.Mesh(helmetParts.pads,pm));}
+    add(new T.CylinderGeometry(.15,.17,.13,14),std(outfit.jacket,{roughness:.85}),H.x,H.minY+.02,H.z+.01); // storm collar
+    if(design){for(const sx of [-1,1]){const d=new T.Mesh(new T.PlaneGeometry(.2,.2),new T.MeshBasicMaterial({map:helmetLogoTexture(design),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));d.position.set(H.x+sx*.4*W,y0+.64*W,cz+.02);d.rotation.y=sx*Math.PI/2;kitGear.add(d);}}
    }else{
     const shellC=design?design.shell:outfit.hat,stripeC=design?design.stripe:kit.accent,fin=design?.finish||'gloss';
     const shellMat=std(shellC,fin==='chrome'?{roughness:.2,metalness:.55}:fin==='matte'?{roughness:.9}:{roughness:.3}),stripeMat=std(stripeC,{roughness:.4}),dark=std('#15191b',{roughness:.8});
@@ -113,10 +144,14 @@ export function createModelAssets(onReady:()=>void){
     add(new T.CylinderGeometry(.15,.17,.13,14),std(outfit.jacket,{roughness:.85}),H.x,H.minY+.02,H.z+.01); // storm collar
     if(design){for(const sx of [-1,1]){const d=add(new T.PlaneGeometry(.17,.17),new T.MeshBasicMaterial({map:helmetLogoTexture(design),transparent:true}),H.x+sx*(R*1.012),cy+R*.08,cz+.04);d.rotation.y=sx*Math.PI/2;d.castShadow=false;}}
    }
-   // goggles: a strap round the head and a curved mirrored lens in a dark frame over the eyes
-   {const gy=H.y+H.r*.2,lr=(H.z-H.front)+.045,strapR=Math.sqrt((H.r*1.12)**2-(H.r*.06)**2)*1.02,strap=add(new T.CylinderGeometry(strapR,strapR,.055,28,1,true),std(design?design.accent:kit.accent,{side:T.DoubleSide,roughness:.7}),H.x,H.y+H.r*.28,H.z+H.r*.06);strap.scale.z=style==='race'?1.28:1.1;
+   // goggles: the real model when it has loaded (frame, strap and mirrored lens), otherwise a simple curved lens
+   if(goggleParts){const gs=H.r*9.6,grp=new T.Group();grp.position.set(H.x,H.y-H.r*.16,H.z-H.r*.1);grp.scale.setScalar(gs);kitGear.add(grp);
+    const frameMat=std(design?design.accent:'#1a1e21',{roughness:.55,side:T.DoubleSide}),strapMat=std(design?design.stripe:kit.accent,{roughness:.8,side:T.DoubleSide}),lensMat=std(lensCol,{metalness:.65,roughness:.1,side:T.DoubleSide});
+    for(const [g,m] of [[goggleParts.strap,strapMat],[goggleParts.frame,frameMat],[goggleParts.lens,lensMat]] as const){const mesh=new T.Mesh(g,m);mesh.castShadow=true;grp.add(mesh);}}
+   else{   {const gy=H.y+H.r*.2,lr=(H.z-H.front)+.045,strapR=Math.sqrt((H.r*1.12)**2-(H.r*.06)**2)*1.02,strap=helmetParts?null:add(new T.CylinderGeometry(strapR,strapR,.055,28,1,true),std(design?design.accent:kit.accent,{side:T.DoubleSide,roughness:.7}),H.x,H.y+H.r*.28,H.z+H.r*.06);if(strap)strap.scale.z=style==='race'?1.28:1.1;
     add(new T.CylinderGeometry(lr,lr,.17,22,1,true,Math.PI-.78,1.56),std('#14181a',{side:T.DoubleSide}),H.x,gy,H.z);
     add(new T.CylinderGeometry(lr+.014,lr+.014,.125,22,1,true,Math.PI-.7,1.4),std(lensCol,{metalness:.6,roughness:.12,side:T.DoubleSide}),H.x,gy,H.z);}
+   }
    // chest logo patch
    const logo=add(new T.PlaneGeometry(.13,.13),new T.MeshBasicMaterial({map:logoTexture(kit.brand),transparent:true}),-.12,1.9,chestZ-.006);logo.rotation.y=Math.PI;logo.castShadow=false;
    // gloves: a mitten over the real hand, with a contrast cuff over the sleeve end

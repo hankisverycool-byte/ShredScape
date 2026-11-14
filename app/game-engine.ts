@@ -175,6 +175,6 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  debugPlace(px:number,py:number,a:number,dvx=0,dvy=0){lift=0;rail=null;kicker=null;back=false;tricks=emptyTrick();x=px;y=py;z=0;angle=a;vx=dvx;vy=dvy;speed=Math.hypot(vx,vy);course=speed>1?Math.atan2(vx,vy):a;fakie=vx*Math.sin(a)+vy*Math.cos(a)<0;bail=0;grace=1;features=nearby(x,y);},
  debugCourse(){return COURSE;},
  debugKickers(){return PARK_FEATURES.filter(f=>f.kind==='ramp').map(f=>({id:f.id,x:f.x,y:f.y,size:f.size,cls:kickerClass(f).name,lip:kickerShape(f).lip,start:kickerShape(f).start,height:kickerShape(f).height}));},
- debugSetHour(h:number){hour=h;},debugState(){return{hour,swivel,chain,x,y,z,angle,speed,course,fakie,run:run.state,next:run.next,clock,spin:tricks.spin,bailed:bail>0,lift,rail:!!rail,score,trick,pushPower,tuck,pushPhase};},
+ debugSetHour(h:number){hour=h;},debugOutfit(){return outfit;},debugState(){return{hour,swivel,chain,x,y,z,angle,speed,course,fakie,run:run.state,next:run.next,clock,spin:tricks.spin,bailed:bail>0,lift,rail:!!rail,score,trick,pushPower,tuck,pushPhase};},
  travel(id:string){const dest=LOCATIONS.find(p=>p.id===id);if(dest)travelTo(dest);},destroy(){destroyed=true;cancelAnimationFrame(raf);mountain.destroy();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',blur);}};
 }
