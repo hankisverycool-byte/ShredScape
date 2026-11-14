@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import ts from 'typescript';
-const tr=p=>ts.transpile(fs.readFileSync(p,'utf8'),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022});
-const url=s=>'data:text/javascript;base64,'+Buffer.from(s).toString('base64');
-const {stepRun,idleRun,COURSE,MISS_PENALTY,formatTime}=await import(url(tr('app/race.ts').replace("'./world'",JSON.stringify(url(tr('app/world.ts'))))));
+import {mod} from './helpers.mjs';
+const {stepRun,idleRun,COURSE,MISS_PENALTY,formatTime}=await mod('app/race.ts');
 // Ride straight down through each gate centre (or offset), one step per gate, 2s apart.
 function ride(best,offsetFor=()=>0){let run=idleRun(),t=0;const s=COURSE.start;({run,best}=stepRun(run,best,s.x,s.y-10,s.x,s.y+1,t));
  for(const g of COURSE.gates){t+=2;const x=g.x+offsetFor(g);({run,best}=stepRun(run,best,x,g.y-10,x,g.y+1,t));}return{run,best};}

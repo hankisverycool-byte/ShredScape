@@ -60,7 +60,7 @@ html,body{font-family:var(--sans)}
 /* Full map */
 .world-map2{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#1d362c;height:calc(100vh - 330px);min-height:320px;display:flex;justify-content:center}
 .world-map2 svg{display:block;height:100%;width:auto;max-width:100%}
-.world-map2 text{font:700 22px var(--sans);fill:#17291f;paint-order:stroke;stroke:#ffffffe6;stroke-width:5px}
+
 .map-pin{cursor:pointer}.map-pin:hover circle{stroke:#ee7f4a}
 .map-north{position:absolute;top:14px;right:16px;font:700 13px var(--sans);color:#17291f;background:#ffffffd9;padding:6px 10px;border-radius:6px}.map-north small{font-weight:500;margin-left:6px}
 @media(max-width:650px){.score{top:66px;left:14px;padding:10px 14px}.score strong{font-size:28px}.minimap{top:66px;right:14px;width:104px;height:104px}.trick-display{top:22%;min-width:0;width:88%}.trick-display h2{font-size:22px}.speed{padding:8px 12px}.speed strong{font-size:30px}.world-map2,.world-map2 svg{max-height:60vh}}
@@ -92,3 +92,14 @@ html,body{font-family:var(--sans)}
 .style-freeride .jacket-shape{height:112px;width:130px}.style-freeride .pants-shape{width:110px;height:58px;clip-path:polygon(8% 0,92% 0,100% 100%,58% 100%,50% 25%,42% 100%,0 100%)}
 .style-race .jacket-shape{width:100px;background:linear-gradient(90deg,var(--accent) 0 18%,var(--jacket) 18% 82%,var(--accent) 82%)}.style-race .pants-shape{width:70px;background:linear-gradient(90deg,var(--accent) 0 15%,var(--pants) 15% 85%,var(--accent) 85%)}
 .gear-tabs.three button{width:33.333%;font-size:10px;letter-spacing:.5px;padding:12px 4px}.gear-tabs{margin:14px 0}
+/* Aspen map */
+.world-map2{background:#dfe9e4}.world-map2 svg{cursor:default}
+.map-mtn{font:900 italic 10px var(--sans);fill:#13261e;opacity:.4;letter-spacing:1px}
+.map-zone{fill-opacity:.1;stroke-width:1.5;stroke-dasharray:5 3}.map-zone.bowl{fill-opacity:.06;stroke-dasharray:2 4}
+.map-zone-label{font:800 8.5px var(--sans);fill:#13261e;paint-order:stroke;stroke:#ffffffd9;stroke-width:3px}
+.map-trail{font:600 italic 8px var(--sans);fill:#26312c;paint-order:stroke;stroke:#ffffffcc;stroke-width:2.4px;pointer-events:none}
+.map-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;font:700 11px var(--sans);letter-spacing:1px;color:var(--muted)}
+.map-legend span{display:flex;align-items:center;gap:6px}.map-legend i{width:16px;height:6px;border-radius:2px;display:block}.map-legend i.kicker{width:11px;height:11px;border-radius:2px;border:1px solid #0006}
+.destinations{max-height:calc(100vh - 330px);overflow:auto;padding-right:6px}
+
+.map-layout{grid-template-columns:1.2fr 1fr}.world-map2{height:calc(100vh - 400px);min-height:430px}
