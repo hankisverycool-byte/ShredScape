@@ -11,7 +11,7 @@ function logoTexture(b:Brand){let t=logos.get(b);if(!t){const c=document.createE
 
 type Template = T.Group;
 export function createModelAssets(onReady:()=>void){
- const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;let goggleParts:{strap:T.BufferGeometry;frame:T.BufferGeometry;lens:T.BufferGeometry}|null=null;let helmetParts:{shell:T.BufferGeometry;liner:T.BufferGeometry|null;pads:T.BufferGeometry|null}|null=null;const paintCache=new Map<string,T.BufferGeometry>();
+ const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;let goggleParts:{frame:T.BufferGeometry;lens:T.BufferGeometry}|null=null;let helmetParts:{shell:T.BufferGeometry;liner:T.BufferGeometry|null;pads:T.BufferGeometry|null}|null=null;const paintCache=new Map<string,T.BufferGeometry>();
  const resources=new Set<T.BufferGeometry|T.Material|T.Texture>();
  function track(g:T.Object3D){g.traverse(o=>{if(o instanceof T.Mesh){resources.add(o.geometry);o.geometry.userData.assetShared=true;for(const m of Array.isArray(o.material)?o.material:[o.material]){resources.add(m);m.userData.assetShared=true;for(const value of Object.values(m))if(value instanceof T.Texture)resources.add(value);}}});}
  function bake(mesh:T.Mesh,matrix=mesh.matrixWorld){const out=new T.Mesh(mesh.geometry.clone().applyMatrix4(matrix),mesh.material);out.name=mesh.name;out.castShadow=true;out.receiveShadow=true;return out;}
@@ -26,8 +26,8 @@ export function createModelAssets(onReady:()=>void){
   helmetParts={shell,liner:parts.Object_2||null,pads:parts.Object_4||null};});
  // Goggles (CC BY 4.0, see model-credits), thinned out to ~9k triangles: frame, strap and lens. Turned to face -Z and centred on the middle of the head.
  void load('/models/ski-goggles.glb',scene=>{const turn=new T.Matrix4().makeRotationY(Math.PI),parts:Record<string,T.BufferGeometry>={};
-  scene.traverse(o=>{if(o instanceof T.Mesh&&['strap','frame','lens'].includes(o.name))parts[o.name]=o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(turn);});
-  if(!parts.frame||!parts.lens||!parts.strap)return;for(const g of Object.values(parts)){g.translate(0,-1.684,-.005);g.userData.assetShared=true;}goggleParts={strap:parts.strap,frame:parts.frame,lens:parts.lens};});
+  scene.traverse(o=>{if(o instanceof T.Mesh&&['frame','lens'].includes(o.name))parts[o.name]=o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(turn);});
+  if(!parts.frame||!parts.lens)return;for(const g of Object.values(parts)){g.translate(0,-1.684,-.005);g.userData.assetShared=true;}goggleParts={frame:parts.frame,lens:parts.lens};});
  void load('/models/eli-snowboard.glb',scene=>{const g=new T.Group();scene.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o));});board=fit(g,2.2,'x');});
  void load('/models/skis/scene.gltf',scene=>{const g=new T.Group();// Raw ski mesh has bindings on -Y; flip so they face up and the tip points forward (-Z).
  scene.getObjectByName('Ski_L')?.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o,new T.Matrix4().makeRotationX(Math.PI)));});skis=fit(g,2.2,'z');
@@ -127,6 +127,7 @@ export function createModelAssets(onReady:()=>void){
     },shellC);
     const grp=new T.Group();grp.position.set(H.x,y0,cz);grp.scale.setScalar(W);kitGear.add(grp);
     const shellMesh=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,color:'#ffffff',roughness:fin==='chrome'?.18:fin==='matte'?.85:.32,metalness:fin==='chrome'?.55:0,side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}));shellMesh.castShadow=true;grp.add(shellMesh);
+    {const under=new T.Mesh(geo,shellMesh.material);under.scale.setScalar(.975);under.position.set(0,.52*(1-.975),0);grp.add(under);} // a second, slightly smaller shell behind it, so any gap left by the thinned mesh shows shell colour, not the head
     if(helmetParts.liner){const lm=std('#1a1e21',{roughness:.95,side:T.DoubleSide});lm.polygonOffset=true;lm.polygonOffsetFactor=4;lm.polygonOffsetUnits=4;grp.add(new T.Mesh(helmetParts.liner,lm));}
     if(helmetParts.pads){const pm=std('#262c30',{roughness:.9,side:T.DoubleSide});pm.polygonOffset=true;pm.polygonOffsetFactor=3;pm.polygonOffsetUnits=3;grp.add(new T.Mesh(helmetParts.pads,pm));}
     add(new T.CylinderGeometry(.15,.17,.13,14),std(outfit.jacket,{roughness:.85}),H.x,H.minY+.02,H.z+.01); // storm collar
@@ -145,9 +146,11 @@ export function createModelAssets(onReady:()=>void){
     if(design){for(const sx of [-1,1]){const d=add(new T.PlaneGeometry(.17,.17),new T.MeshBasicMaterial({map:helmetLogoTexture(design),transparent:true}),H.x+sx*(R*1.012),cy+R*.08,cz+.04);d.rotation.y=sx*Math.PI/2;d.castShadow=false;}}
    }
    // goggles: the real model when it has loaded (frame, strap and mirrored lens), otherwise a simple curved lens
-   if(goggleParts){const gs=H.r*9.6,grp=new T.Group();grp.position.set(H.x,H.y-H.r*.16,H.z-H.r*.1);grp.scale.setScalar(gs);kitGear.add(grp);
+   if(goggleParts){const gs=H.r*10,gy=H.y-H.r*.04,gz=H.z-H.r*.24,grp=new T.Group();grp.position.set(H.x,gy,gz);grp.scale.setScalar(gs);kitGear.add(grp);
     const frameMat=std(design?design.accent:'#1a1e21',{roughness:.55,side:T.DoubleSide}),strapMat=std(design?design.stripe:kit.accent,{roughness:.8,side:T.DoubleSide}),lensMat=std(lensCol,{metalness:.65,roughness:.1,side:T.DoubleSide});
-    for(const [g,m] of [[goggleParts.strap,strapMat],[goggleParts.frame,frameMat],[goggleParts.lens,lensMat]] as const){const mesh=new T.Mesh(g,m);mesh.castShadow=true;grp.add(mesh);}}
+    for(const [g,m] of [[goggleParts.frame,frameMat],[goggleParts.lens,lensMat]] as const){const mesh=new T.Mesh(g,m);mesh.castShadow=true;grp.add(mesh);}
+    // the strap: an elastic band round the outside of the helmet at lens height, meeting the frame at the sides
+    const HWd=H.r*2.7,sr=HWd*.47,strap=add(new T.CylinderGeometry(sr,sr,.075,28,1,true,Math.PI-2.1,4.2),strapMat,H.x,gy+H.r*.12,H.z+H.r*.1);strap.scale.z=1.02;}
    else{   {const gy=H.y+H.r*.2,lr=(H.z-H.front)+.045,strapR=Math.sqrt((H.r*1.12)**2-(H.r*.06)**2)*1.02,strap=helmetParts?null:add(new T.CylinderGeometry(strapR,strapR,.055,28,1,true),std(design?design.accent:kit.accent,{side:T.DoubleSide,roughness:.7}),H.x,H.y+H.r*.28,H.z+H.r*.06);if(strap)strap.scale.z=style==='race'?1.28:1.1;
     add(new T.CylinderGeometry(lr,lr,.17,22,1,true,Math.PI-.78,1.56),std('#14181a',{side:T.DoubleSide}),H.x,gy,H.z);
     add(new T.CylinderGeometry(lr+.014,lr+.014,.125,22,1,true,Math.PI-.7,1.4),std(lensCol,{metalness:.6,roughness:.12,side:T.DoubleSide}),H.x,gy,H.z);}

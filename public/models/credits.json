@@ -37,7 +37,7 @@
     "source": "https://sketchfab.com/3d-models/prototype-ski-helmet-speakers-e1a43296b2cc4e36ad0667a06fccae4c",
     "license": "CC BY 4.0",
     "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Turned to face forward, resized to the rider's head, and recoloured per design with painted stripes and side marks."
+    "changes": "Reduced to about 17k vertices and smoothed, turned to face forward, resized to the rider's head, and recoloured per design with painted stripes and side marks."
   },
   {
     "title": "6b34 (ski goggles)",
@@ -45,6 +45,6 @@
     "source": "https://sketchfab.com/3d-models/6b34-a3b734b72c654462b936dcf877771010",
     "license": "CC BY 4.0",
     "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Kept the frame, strap and lens, reduced the mesh to about 9k vertices, resized to the helmet and recoloured per kit."
+    "changes": "Kept the frame and lens only, reduced to about 3.6k vertices, resized to the helmet and recoloured per kit; the strap is generated in code."
   }
 ]
