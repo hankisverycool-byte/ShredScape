@@ -13,7 +13,7 @@ export const KICKER_CLASSES:KickerClass[]=[
  {name:'HUGE',run:210,half:128,height:100,landing:1100,color:'#d6453b'},
  {name:'GIGANTIC',run:320,half:180,height:180,landing:1700,color:'#8a4bd1'},
 ];
-export const KICKER={lipAt:16,curve:1.6,maxLaunchSpeed:420,back:1.1,backCurve:1.5};
+export const KICKER={lipAt:16,curve:1.6,maxLaunchSpeed:420,back:.5,backCurve:1.25};
 // How long you hold Space to fully charge a jump, and how much a jump with no charge keeps.
 export const CHARGE={time:.8,min:.3};
 export const chargeMul=(c:number)=>CHARGE.min+(1-CHARGE.min)*Math.max(0,Math.min(1,c));
@@ -22,7 +22,7 @@ export const kickerClass=(f:Spot)=>KICKER_CLASSES[kickerIndex(f)];
 export function kickerShape(f:Spot){const c=kickerClass(f),lip=f.y+KICKER.lipAt;return{start:lip-c.run,lip,run:c.run,half:c.half,height:c.height};}
 // Height of the kicker surface under (x,y); 0 when not on it.
 // A kicker is a mound of snow: the face rises to the lip, the back slopes down to the ground, and the sides round off into the hill.
-const side=(f:Spot,x:number)=>{const k=kickerShape(f),u=Math.abs(x-f.x)/k.half;if(u>=1)return 0;return Math.pow((1+Math.cos(Math.PI*u))/2,.55);}; // broad rounded crown that melts into the hill
+const side=(f:Spot,x:number)=>{const k=kickerShape(f),u=Math.abs(x-f.x)/k.half;if(u>=1)return 0;if(u<=.6)return 1;return (1+Math.cos(Math.PI*(u-.6)/.4))/2;}; // wide flat-topped jump with rounded shoulders
 export function kickerLift(f:Spot,x:number,y:number){const k=kickerShape(f);if(y<k.start||y>k.lip)return 0;return side(f,x)*k.height*Math.pow((y-k.start)/k.run,KICKER.curve);}
 export function kickerBack(f:Spot){return kickerShape(f).run*KICKER.back;}
 // Full surface including the back slope: what you land on when you come down past the lip.
