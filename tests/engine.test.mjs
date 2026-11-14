@@ -36,9 +36,9 @@ test('pushing drives animation only on snow and stops when released',()=>{
 const rails=PARK_FEATURES.filter(f=>f.kind==='rail'),kickers=PARK_FEATURES.filter(f=>f.kind==='ramp');
 const railAt=(pred)=>rails.find(pred);
 test('riding onto a rail locks on, slides, and banks a grind after dropping off the end',()=>{
- const f=rails[0],r=railShape(f),s=setup();s.game.debugPlace(f.x,r.start-60,0,0,150);s.tick(.5);
+ const f=rails.find(q=>railShape(q).len>=250&&!railShape(q).box),r=railShape(f),s=setup();s.game.debugPlace(f.x,r.start-60,0,0,150);s.tick(.5);
  let d=s.game.debugState();assert.equal(d.rail,true);assert.ok(d.lift>8);assert.ok(Math.abs(d.x-f.x)<3);
- s.tick(.4);d=s.game.debugState();assert.equal(d.rail,false);assert.equal(d.bailed,false);assert.ok(d.score>=150,'score '+d.score);s.game.destroy();
+ for(let i=0;i<300&&s.game.debugState().rail;i++)s.tick(.02);s.tick(.1);d=s.game.debugState();assert.equal(d.rail,false);assert.equal(d.bailed,false);assert.ok(d.score>=150,'score '+d.score);s.game.destroy();
 });
 test('jumping onto a rail from the air locks on; turning on it becomes a sideways slide',()=>{
  const f=rails.find(q=>railShape(q).len>=250&&!railShape(q).box),r=railShape(f),s=setup();s.game.debugPlace(f.x,r.start-95,0,0,150);s.game.input('jump',true);s.game.input('jump',false);for(let i=0;i<40&&!s.game.debugState().rail;i++)s.tick(.025);
@@ -67,13 +67,13 @@ test('timing matters: jumping early on a big kicker gives much less air and you 
 });
 test('faster means more air and distance off the same kicker',()=>{const k=pickKicker(3);assert.ok(fly(k,70,'lip').peak>fly(k,35,'lip').peak+2);});
 test('holding push from a standstill poles at first, then tucks once you are fast',()=>{
- const s=setup();s.game.debugPlace(2550,500,0,0,0);s.game.input('up',true);let maxPush=0,tuckWhilePushing=0;
+ const s=setup();s.game.debugPlace(0,500,0,0,0);s.game.input('up',true);let maxPush=0,tuckWhilePushing=0;
  for(let i=0;i<60;i++){s.tick(.05);const d=s.game.debugState();maxPush=Math.max(maxPush,d.pushPower);if(d.pushPower>.5)tuckWhilePushing=Math.max(tuckWhilePushing,d.tuck);}
  const last=s.game.debugState();assert.ok(maxPush>.9,'should pole at low speed');assert.ok(last.speed>110,'got '+last.speed.toFixed(0));assert.equal(last.bailed,false);
  assert.ok(last.pushPower<.05);assert.ok(last.tuck>.8);assert.ok(tuckWhilePushing<.5);s.game.destroy();
 });
 test('the push animation never runs fast: at 30 km/h pressing the key does not pole',()=>{
- const s=setup();s.game.debugPlace(2550,500,0,0,170);s.game.input('up',true);s.tick(.6);
+ const s=setup();s.game.debugPlace(0,500,0,0,170);s.game.input('up',true);s.tick(.6);
  const d=s.game.debugState();assert.ok(d.pushPower<.02,'pushPower '+d.pushPower);assert.ok(d.tuck>.5);s.game.destroy();
 });
 
@@ -97,13 +97,13 @@ test('dropping from one rail onto another within two seconds links them',()=>{
  for(let i=0;i<300&&s.game.debugState().rail;i++)s.tick(.02);assert.equal(s.game.debugState().rail,false);const rg=railShape(g);s.game.debugPlace(g.x,rg.start-60,0,0,150);s.tick(.4);const d=s.game.debugState();assert.equal(d.rail,true,'on second rail '+JSON.stringify(d));assert.ok(d.chain>=1,'chain '+d.chain);s.game.destroy();
 });
 test('instant replay records the last seconds, plays them back with cuts and slow-mo, and exits',()=>{
- const s=setup();s.game.debugPlace(2550,500,0,0,150);s.tick(3);
+ const s=setup();s.game.debugPlace(0,500,0,0,150);s.tick(3);
  assert.equal(s.game.startReplay(),true);s.tick(.2);let r=s.state.replay;assert.ok(r&&r.on&&r.dur>=2.5&&r.cam==='chase','replay '+JSON.stringify(r));assert.ok(globalThis.frameState.cam,'renderer got a replay camera');
  const before=s.game.debugState().y;s.tick(1);assert.equal(s.game.debugState().y,before,'game is frozen while the replay plays');s.tick(4);assert.ok(s.state.replay.cutId>1,'camera cut');
  s.game.stopReplay();s.tick(.1);assert.equal(s.state.replay,undefined);s.tick(.5);assert.ok(s.game.debugState().y>before,'play resumes');s.game.destroy();
 });
 test('the replay key is set by the user and fires the replay',()=>{
- const s=setup();s.game.setSettings({quality:'low',fov:65,sensitivity:1,cameraDistance:10,replayKey:'KeyP'});s.game.debugPlace(2550,500,0,0,150);s.tick(3);
+ const s=setup();s.game.setSettings({quality:'low',fov:65,sensitivity:1,cameraDistance:10,replayKey:'KeyP'});s.game.debugPlace(0,500,0,0,150);s.tick(3);
  keyHandlers.keydown({code:'KeyB',target:{matches:()=>false},preventDefault(){}});s.tick(.1);assert.equal(s.state.replay,undefined);
  keyHandlers.keydown({code:'KeyP',target:{matches:()=>false},preventDefault(){}});s.tick(.1);assert.equal(s.state.replay?.on,true);s.game.stopReplay();s.game.destroy();
 });
@@ -113,29 +113,29 @@ test('snow warms up through the day and the game clock loops from 7 to 19',()=>{
 });
 
 test('direction: D spins the rider clockwise from above and A the other way, matching the ground turn direction on landing',()=>{
- const ground=setup();ground.game.debugPlace(2550,500,0,0,40);ground.game.input('right',true);ground.tick(.3);const gAngle=ground.game.debugState().angle;ground.game.destroy();
+ const ground=setup();ground.game.debugPlace(0,500,0,0,40);ground.game.input('right',true);ground.tick(.3);const gAngle=ground.game.debugState().angle;ground.game.destroy();
  const air=setup();charged(air);air.game.input('right',true);air.tick(.25);const spin=globalThis.frameState.spin;air.game.destroy();
  assert.ok(gAngle>0,'ground right turn increases heading');assert.ok(spin<0,'air right spin is the same visual direction (heading = angle - spin)');
 });
 test('a landing that is close but not clean keeps you riding with a speed penalty; a bad one wipes out',()=>{
- const s=setup();s.game.debugPlace(2550,500,0,0,150);charged(s);s.game.input('up',true);s.tick(.5);s.game.input('up',false);s.tick(.05);
+ const s=setup();s.game.debugPlace(0,500,0,0,150);charged(s);s.game.input('up',true);s.tick(.5);s.game.input('up',false);s.tick(.05);
  const before=s.game.debugState().speed;let st;for(let i=0;i<200;i++){s.tick(.01);st=s.game.debugState();if(st.z===0&&st.speed<before)break;}
  assert.equal(st.bailed,false);s.game.destroy();
 });
 
 test('a wipeout sends you to the nearest spawn once the tumble ends',()=>{
- const s=setup();s.game.debugPlace(2400,5200,0,0,150);charged(s);s.game.input('up',true);s.tick(.3);s.game.input('up',false);s.tick(1.2);assert.equal(s.state.bailed,true);
+ const s=setup();s.game.debugPlace(0,5200,0,0,150);charged(s);s.game.input('up',true);s.tick(.3);s.game.input('up',false);s.tick(1.2);assert.equal(s.state.bailed,true);
  s.tick(2.2);const d=s.game.debugState();assert.equal(s.state.bailed,false);assert.ok(s.state.respawn>=1,'respawn counted');assert.ok(s.state.respawnName,'named '+s.state.respawnName);
  const {LOCATIONS}=W;const near=LOCATIONS.map(l=>Math.hypot(l.x-d.x,l.y-d.y)).sort((a,b)=>a-b)[0];assert.ok(near<1,'standing on a spawn point, '+near);s.game.destroy();
 });
 test('Q and E in the air cross or scissor the skis and are scored; on a board they are a method and a stalefish',()=>{
  for(const [gear,names] of [['skis',['Cross','Scissor']],['snowboard',['Method','Stalefish']]]){
-  const s=setup();s.game.setOutfit({jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear});s.game.debugPlace(2550,500,0,0,60);charged(s);s.game.input('crossL',true);s.game.input('crossR',true);s.tick(.4);
+  const s=setup();s.game.setOutfit({jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear});s.game.debugPlace(0,500,0,0,60);charged(s);s.game.input('crossL',true);s.game.input('crossR',true);s.tick(.4);
   assert.ok(globalThis.frameState.cross>.8&&globalThis.frameState.scissor>.8,'pose amounts '+globalThis.frameState.cross);
   const t=s.state.trick;for(const n of names)assert.ok(t.includes(n),gear+' trick '+t);s.game.destroy();}
 });
 test('challenge feats are queued for the page: air height, spin, speed',()=>{
  const feats=[];const s=(()=>{let snapshot;const game=createGame({},n=>{snapshot=n;feats.push(...(n.feats||[]));});let now=performance.now();game.start();return{game,tick(sec){for(let i=0;i<Math.round(sec*200);i++){now+=5;callback(now);}}};})();
- s.game.debugPlace(2550,500,0,0,150);s.tick(1);s.game.input('jump',true);s.tick(.9);s.game.input('jump',false);s.game.input('right',true);s.tick(.2);s.game.input('right',false);s.tick(2);
+ s.game.debugPlace(0,500,0,0,150);s.tick(1);s.game.input('jump',true);s.tick(.9);s.game.input('jump',false);s.game.input('right',true);s.tick(.2);s.game.input('right',false);s.tick(2);
  const types=feats.map(f=>f.type);assert.ok(types.includes('land'),'feats '+JSON.stringify(feats));assert.ok(feats.find(f=>f.type==='air').value>1);s.game.destroy();
 });

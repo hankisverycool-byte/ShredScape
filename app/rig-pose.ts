@@ -43,7 +43,7 @@ export function computePose(i:PoseIn):PoseOut{
  const torsoYaw=i.fakie&&skis&&!i.air?.55:-i.edge*(skis?.12:.05);
  const torsoRoll=-i.edge*(skis?.19:.14);
  // --- arms
- const idle:Arm={pitch:.3,out:.3,elbow:.8,twist:0},run:Arm={pitch:.5,out:.28,elbow:1.0,twist:0};
+ const idle:Arm={pitch:.42,out:.12,elbow:.75,twist:0},run:Arm={pitch:.55,out:.12,elbow:.95,twist:0};
  let A=mixArm(idle,run,glide);
  if(skis){
   A=mixArm(A,{pitch:lerp(-.18,.88,u),out:.22,elbow:lerp(.22,.75,u),twist:0},i.push);   // double-poling: drive back, swing forward
