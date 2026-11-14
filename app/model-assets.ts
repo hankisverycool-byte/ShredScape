@@ -50,7 +50,7 @@ export function createModelAssets(onReady:()=>void){
     }
    }
    // A longer neck: the head parts ride up by NECK (stretching the neck skin under them), and the jacket collar is trimmed so the neck shows.
-   const NECK=.16;if(['Object_4','Object_6','Object_8'].includes(o.name)){for(let i=0;i<p.count;i++){const y=p.getY(i);p.setY(i,y+NECK*sm(y,2.02,2.3));}}
+   const NECK=.07;if(['Object_4','Object_6','Object_8'].includes(o.name)){for(let i=0;i<p.count;i++){const y=p.getY(i);p.setY(i,y+NECK*sm(y,2.02,2.3));}}
    else if(o.name==='Object_10'){for(let i=0;i<p.count;i++){const y=p.getY(i);if(y>2.14)p.setY(i,2.14+(y-2.14)*.2);}}
    o.geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(indices,4));o.geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));
   });
@@ -111,6 +111,8 @@ export function createModelAssets(onReady:()=>void){
    const H=headInfo(),kitGear=new T.Group();kitGear.position.y=-1.45;bones[9].add(kitGear);
    const std=(c:string,o:Partial<T.MeshStandardMaterialParameters>={})=>new T.MeshStandardMaterial({color:c,roughness:.6,...o});
    const add=(g:T.BufferGeometry,mat:T.Material,x:number,y:number,z:number,parent:T.Object3D=kitGear)=>{const m=new T.Mesh(g,mat);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;};
+   // Neck: the skin mesh stops at the chin, so a short skin-coloured column joins the head to the collar.
+   {const base=2.12,top=H.minY+.045,nh=Math.max(.04,top-base);add(new T.CylinderGeometry(.082,.092,nh,10),std('#c9a98a',{roughness:.9,flatShading:true}),H.x,base+nh/2,H.z+.035);}
    // Head gear. Freeride kits wear a beanie and hood; everything else (and any limited-drop helmet) gets a proper shell: rounded crown, front peak,
    // ear pads, a stripe over the top, and a curved goggle lens on a strap instead of a box stuck to the face.
    const design=helmetById(outfit.helmet),lensCol=design?design.lens:kit.lens;
