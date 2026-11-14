@@ -169,7 +169,7 @@ kbd{font:700 11px var(--disp);letter-spacing:.8px;color:var(--ink);padding:2px 7
 
 .minimap{position:absolute;top:78px;right:24px;width:168px;height:168px;pointer-events:none;border:2px solid #ffffffd9;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px));box-shadow:0 0 0 1px #000a}
 
-.trick-display{position:absolute;bottom:128px;left:50%;transform:translateX(-50%);text-align:center;min-width:300px;padding:10px 30px 12px;background:#0a0e12e6;clip-path:polygon(18px 0,100% 0,calc(100% - 18px) 100%,0 100%);pointer-events:none}
+.trick-display{position:absolute;bottom:92px;right:24px;transform:none;text-align:center;min-width:300px;padding:10px 30px 12px;background:#0a0e12e6;clip-path:polygon(18px 0,100% 0,calc(100% - 18px) 100%,0 100%);pointer-events:none}
 .trick-display:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--accent-2)}
 .trick-display small{font:700 13px var(--disp);letter-spacing:4px;color:var(--accent-2)}
 .trick-display h2{font:900 italic 38px/1 var(--disp);text-transform:uppercase;margin:4px 0;letter-spacing:.5px}
@@ -214,6 +214,7 @@ kbd{font:700 11px var(--disp);letter-spacing:.8px;color:var(--ink);padding:2px 7
 
 /* ---------- responsive ---------- */
 @media(min-width:1600px){.start-copy{max-width:660px}.start-copy p{font-size:19px}}
+@media(max-width:1250px){.controls-hint{display:none}}
 @media(max-width:1000px){
  .shop-grid{grid-template-columns:repeat(2,1fr)}.controls-hint{display:none}.map-layout{gap:14px}
  .speed{width:290px}.speed strong{font-size:64px}
@@ -234,10 +235,14 @@ kbd{font:700 11px var(--disp);letter-spacing:.8px;color:var(--ink);padding:2px 7
  .score{top:62px;left:12px;min-width:0;padding:6px 14px 8px 18px}.score strong{font-size:32px}.score small,.score>span{font-size:10px;letter-spacing:2px}
  .minimap{top:62px;right:12px;width:108px;height:108px}
  .race-time{font-size:42px;padding:4px 26px 6px;min-width:190px}.race-hud{top:56px}.race-idle{top:60px;font-size:12px;flex-wrap:wrap;justify-content:center;max-width:92%}
- .trick-display{bottom:206px;min-width:0;width:90%}.trick-display h2{font-size:28px}
+ .trick-display{bottom:206px;right:12px;left:auto;min-width:0;width:60%}.trick-display h2{font-size:28px}
  .game-bottom{bottom:84px;left:12px;right:12px}.speed{width:230px;padding:8px 14px 12px 18px}.speed strong{font-size:48px}.speed-num span{font-size:14px}.room-indicator{font-size:11px;padding:8px 10px}
  .mobile-controls{position:absolute;bottom:14px;left:10px;right:10px;display:flex;gap:6px}
  .mobile-controls button{flex:1;padding:18px 4px;background:#0a0e12e6;box-shadow:inset 0 0 0 1px var(--line-2);font:800 italic 14px var(--disp);letter-spacing:1px;text-transform:uppercase;touch-action:none;user-select:none;clip-path:var(--card);--cut:8px}
  .mobile-controls button:active{background:var(--accent)}
  .toast{top:112px;width:88%;font-size:14px}
 }
+
+.charge{position:absolute;left:0;bottom:130px;display:flex;flex-direction:column;align-items:center;gap:6px;font:700 11px var(--disp);letter-spacing:3px;color:var(--muted)}
+.charge>div{width:16px;height:120px;background:#0a0e12e6;box-shadow:inset 0 0 0 1px var(--line-2);display:flex;align-items:flex-end;clip-path:polygon(0 4px,4px 0,100% 0,100% 100%,0 100%)}
+.charge i{display:block;width:100%;background:linear-gradient(0deg,var(--cyan),var(--accent-2));transition:none}.charge i.full{background:var(--accent);animation:gatepulse .35s infinite}

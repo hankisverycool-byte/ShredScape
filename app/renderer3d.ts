@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {createModelAssets} from './model-assets';
 import {kitById} from './kits';
-import {kickerShape,KICKER,kickerClass,railShape} from './park';
+import {kickerShape,kickerSurface,kickerBack,railShape} from './park';
 import {COURSE} from './race';
 import {computePose,blendPose,pushWeight,type PoseIn,type PoseOut} from './rig-pose';
 import {solveLeg,type Rig,type Leg} from './rig';
@@ -26,10 +26,6 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  function mesh(g:T.BufferGeometry,c:string,parent:T.Object3D,pos:number[],scale:number[]){const m=new T.Mesh(g,mat(c));m.position.set(pos[0],pos[1],pos[2]);m.scale.set(scale[0],scale[1],scale[2]);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
  function box(p:T.Object3D,c:string,x:number,y:number,z:number,w:number,h:number,d:number){return mesh(boxGeo,c,p,[x,y,z],[w,h,d]);}
  function label(text:string){const c=document.createElement('canvas');c.width=512;c.height=96;const ctx=c.getContext('2d')!;ctx.fillStyle='#20372ee8';ctx.fillRect(0,0,512,96);ctx.strokeStyle='#e1c28c';ctx.lineWidth=5;ctx.strokeRect(5,5,502,86);ctx.fillStyle='#f1e5c7';ctx.textAlign='center';ctx.font='bold 29px Georgia';ctx.fillText(text,256,58);const tex=new T.CanvasTexture(c);tex.magFilter=T.NearestFilter;const sprite=new T.Sprite(new T.SpriteMaterial({map:tex,depthTest:true}));sprite.scale.set(6,1.125,1);return sprite;}
- // Kicker size signs: one shared material per class, so a park full of kickers costs a few textures, not dozens.
- const classLabels=new Map<string,T.SpriteMaterial>();
- function classSign(text:string,color:string){let m=classLabels.get(text);if(!m){const c=document.createElement('canvas');c.width=320;c.height=96;const ctx=c.getContext('2d')!;ctx.fillStyle=color;ctx.fillRect(0,0,320,96);ctx.fillStyle='#0f1c17d9';ctx.fillRect(8,8,304,80);ctx.fillStyle=color;ctx.textAlign='center';ctx.font='900 italic 46px Arial, sans-serif';ctx.fillText(text,160,64);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;m=new T.SpriteMaterial({map:tex,depthTest:true});m.userData.assetShared=true;classLabels.set(text,m);}
-  const sp=new T.Sprite(m);sp.scale.set(3.6,1.08,1);return sp;}
  function tree(parent:T.Object3D,size:number,seed=0){const imported=models.tree(seed);if(imported){imported.scale.setScalar(size);parent.add(imported);return;}box(parent,'#705b43',0,1,0,.3,2,.3);for(let i=0;i<3;i++){mesh(coneGeo,i%2?'#375d51':'#2b4e43',parent,[0,1.6+i*.9,0],[(1.6-i*.35)*size,2*size,(1.6-i*.35)*size]);mesh(coneGeo,'#e3eee7',parent,[0,2.05+i*.9,0],[(1.24-i*.27)*size,1.35*size,(1.24-i*.27)*size]);}}
  function cabin(parent:T.Object3D){box(parent,'#856448',0,1.5,0,7,3,5);box(parent,'#af8c61',0,.3,2.8,8,.6,1.4);const roof=mesh(new T.CylinderGeometry(0,5,2.4,4), '#dce8df',parent,[0,4,0],[1.15,1,.85]);roof.rotation.y=Math.PI/4;box(parent,'#423e35',0,1,2.54,1.1,2,.12);for(const x of [-2.2,2.2]){box(parent,'#f5cf78',x,1.7,2.55,1.1,1,.12);box(parent,'#433c30',x,1.7,2.65,.1,1,.1);}box(parent,'#716e60',2,4.5,-1,.65,2,.65);}
  function sign(parent:T.Object3D,title:string){box(parent,'#897352',0,1.5,0,.18,3,.18);const l=label(title);l.position.set(0,3,0);parent.add(l);}
@@ -66,21 +62,12 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  function makeFeature(f:Feature){const g=new T.Group();g.position.set(f.x*S,ground(f.x,f.y),-f.y*S);
  if(f.kind==='tree')tree(g,f.size,f.seed);else if(f.kind==='rock')mesh(sphereGeo,'#7c918a',g,[0,.4,0],[1.1*f.size,.8*f.size,.9*f.size]);
  else if(f.kind==='ramp'){
- // Snow kicker of its size class: a shaped face rising to the lip, draped over the terrain, with a takeoff line in the class colour,
- // side markers, and a sign at the foot so you know what you are about to hit.
- const k=kickerShape(f),c=kickerClass(f),g0=ground(f.x,f.y),N=Math.max(10,Math.round(k.run/12)),pos:number[]=[],skirt=k.half+Math.max(12,k.height*.7);
- const P=(lx:number,t:number,top:boolean)=>{const wy=k.start+t*k.run;return[lx*S,ground(f.x+lx,wy)-g0+(top?k.height*Math.pow(t,KICKER.curve)*S:-.06),-(wy-f.y)*S];};
- const quad=(a:number[],b:number[],c2:number[],d:number[])=>pos.push(...a,...b,...c2,...a,...c2,...d);
- for(let i=0;i<N;i++){const t0=i/N,t1=(i+1)/N;
-  quad(P(-k.half,t0,true),P(k.half,t0,true),P(k.half,t1,true),P(-k.half,t1,true));
-  quad(P(-skirt,t0,false),P(-k.half,t0,true),P(-k.half,t1,true),P(-skirt,t1,false));
-  quad(P(k.half,t0,true),P(skirt,t0,false),P(skirt,t1,false),P(k.half,t1,true));}
- quad(P(-k.half,1,true),P(k.half,1,true),P(skirt,1,false),P(-skirt,1,false));
+ // Snow kicker: a solid mound pushed up out of the hillside. Face to the lip, rounded top, back sloping down, sides rolling into the slope.
+ const k=kickerShape(f),g0=ground(f.x,f.y),back=kickerBack(f),y0=k.start-k.run*.12,y1=k.lip+back,NX=14,NY=Math.max(12,Math.round((y1-y0)/10)),pos:number[]=[];
+ const V=(i:number,j:number)=>{const lx=(i/NX*2-1)*k.half*1.18,wy=y0+j/NY*(y1-y0),lift=kickerSurface(f,f.x+lx,wy);return[lx*S,ground(f.x+lx,wy)-g0+lift*S-.04,-(wy-f.y)*S];};
+ for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const a=V(i,j),b=V(i+1,j),c2=V(i+1,j+1),d=V(i,j+1);pos.push(...a,...c2,...b,...a,...d,...c2);}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(pos,3));geo.computeVertexNormals();
  const snow=new T.Mesh(geo,mat('#f3f7f5'));snow.material.side=T.DoubleSide;snow.receiveShadow=true;snow.castShadow=true;g.add(snow);
- const lip=P(0,1,true),line=box(g,c.color,0,lip[1]+.015,lip[2]+.1,k.half*2*S,.03,.14+k.height*S*.004);line.castShadow=false;
- const mh=.9+k.height*S*.12;for(const sx of [-1,1]){const m=P(sx*(k.half+4),.92,true);box(g,c.color,m[0],m[1]+mh/2,m[2],.07,mh,.07);}
- const foot=P(-(k.half+8),0,false),sg=classSign(c.name,c.color);sg.position.set(foot[0],foot[1]+2.4,foot[2]);g.add(sg);box(g,'#897352',foot[0],foot[1]+1.1,foot[2],.1,2.2,.1);
  }
  else if(f.kind==='rail'){
  // Rail or box, pitched to follow the slope under it.
@@ -163,7 +150,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const previewFloor=new T.Mesh(new T.CircleGeometry(30,48),mat('#40594e'));previewFloor.rotation.x=-Math.PI/2;previewFloor.receiveShadow=true;scene.add(previewFloor);
  const dust=new T.InstancedMesh(sphereGeo,mat('#f4f8e9'),220);dust.instanceMatrix.setUsage(T.DynamicDrawUsage);scene.add(dust);const dummy=new T.Object3D();
  const liftChairs:T.Group[]=[];for(let i=0;i<8;i++){const g=new T.Group();box(g,'#52665d',0,1,0,.06,2,.06);box(g,'#df9c62',0,0,0,1.6,.12,.8);box(g,'#596f65',0,.35,.35,1.6,.7,.08);scene.add(g);liftChairs.push(g);}
- let width=0,height=0,camReady=false,zone=-999,lastClock=0,shake=0,wasBail=false,camHeading=0,lastX=0,lastY=0;
+ let width=0,height=0,camReady=false,zone=-999,lastClock=0,shake=0,wasBail=false,camHeading=0,lastX=0,lastY=0,lookReady=false;const camLook=new T.Vector3();
  // Ski tracks: one ribbon per ski (one for a board). Thin when carving, wide smears when skidding.
  const trackMat=new T.MeshBasicMaterial({color:'#aebfc2',transparent:true,opacity:.45,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,side:T.DoubleSide});
  type TrackPt={x:number;y:number;z:number;nx:number;nz:number;w:number;gap:boolean};
@@ -306,11 +293,11 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  // Camera follows where you are actually going, not where the skis point, so skids read clearly.
  // Teleports (shuttle, restart) snap the camera instead of flying it across the mountain.
  const jumped=Math.hypot(f.x-lastX,f.y-lastY)>100;lastX=f.x;lastY=f.y;
- {const goal=f.speed>20&&f.course!==undefined?f.course:f.angle+(f.fakie?Math.PI:0);if(jumped)camHeading=goal;camHeading+=Math.atan2(Math.sin(goal-camHeading),Math.cos(goal-camHeading))*Math.min(1,fdt*(f.speed>20?4:.8));}
- const heading=inMenu?f.angle:camHeading+(f.settings.debugYaw||0);const dbg=f.settings.debugCam;const dist=f.settings.cameraDistance;
- const target=wardrobe?new T.Vector3(f.x*S+3.4,py+1.9,-f.y*S-4.2):inMenu?new T.Vector3(f.x*S+Math.sin(f.clock*.05)*13,py+5.5,-f.y*S+16):new T.Vector3(f.x*S-Math.sin(heading)*dist,py+4.5+f.z*S*.35,-f.y*S+Math.cos(heading)*dist);
+ {const goal=f.speed>20&&f.course!==undefined?f.course:f.angle+(f.fakie?Math.PI:0);if(jumped)camHeading=goal;camHeading+=Math.atan2(Math.sin(goal-camHeading),Math.cos(goal-camHeading))*(1-Math.exp(-fdt*(f.speed>20?5:1)));}
+ const heading=inMenu?f.angle:camHeading+(f.settings.debugYaw||0);const dbg=f.settings.debugCam;const dist=f.settings.cameraDistance+(inMenu?0:Math.min(3,f.speed*.006));
+ const target=wardrobe?new T.Vector3(f.x*S+3.4,py+1.9,-f.y*S-4.2):inMenu?new T.Vector3(f.x*S+Math.sin(f.clock*.05)*13,py+5.5,-f.y*S+16):new T.Vector3(f.x*S-Math.sin(heading)*dist,py+.8*(f.z+(f.lift||0))*S+4.2,-f.y*S+Math.cos(heading)*dist);
  if(!wardrobe)target.y=Math.max(target.y,ground(target.x/S,-target.z/S)+3.4);
- if(!camReady||jumped||camera.position.distanceTo(target)>75){camera.position.copy(target);camReady=true;}camera.position.lerp(target,.065);
+ if(!camReady||jumped||camera.position.distanceTo(target)>75){camera.position.copy(target);camReady=true;}{const ah=1-Math.exp(-fdt*(inMenu?4:10)),av=1-Math.exp(-fdt*(inMenu?4:5.5));camera.position.x+=(target.x-camera.position.x)*ah;camera.position.z+=(target.z-camera.position.z)*ah;camera.position.y+=(target.y-camera.position.y)*av;}
  // Whatever the smoothing did, never let the camera sink into a slope or a kicker.
  if(!wardrobe){
   // Keep the line of sight clear of crests: sample the ground between the camera and the rider and lift the camera until it clears them.
@@ -318,7 +305,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   for(let k=1;k<=7;k++){const t=k/8,gx=camera.position.x+(f.x*S-camera.position.x)*t,gz=camera.position.z+(-f.y*S-camera.position.z)*t;need=Math.max(need,(ground(gx/S,-gz/S)+1.4-ry*t)/(1-t));}
   camera.position.y=Math.max(camera.position.y,need);}if(shake>.01&&!inMenu)camera.position.add(new T.Vector3((Math.random()-.5)*shake*.5,(Math.random()-.5)*shake*.4,0));
  if(dbg&&!inMenu){const a=f.angle+dbg.yaw;camera.position.set(f.x*S-Math.sin(a)*dbg.dist,py+(f.z+(f.lift||0))*S+dbg.height,-f.y*S+Math.cos(a)*dbg.dist);camera.lookAt(f.x*S,py+(f.z+(f.lift||0))*S+(dbg.look??1.2),-f.y*S);}
- else if(wardrobe)camera.lookAt(f.x*S,py+1.25,-f.y*S);else if(inMenu)camera.lookAt(f.x*S,py+1,-f.y*S-7);else{const lx=f.x+Math.sin(heading)*140,ly=f.y+Math.cos(heading)*140,ahead=ground(lx,ly);camera.lookAt(f.x*S+Math.sin(heading)*7,Math.min(py,ahead)+1+(f.z+(f.lift||0))*S*.85,-f.y*S-Math.cos(heading)*7);}
+ else if(wardrobe)camera.lookAt(f.x*S,py+1.25,-f.y*S);else if(inMenu)camera.lookAt(f.x*S,py+1,-f.y*S-7);else{const want=new T.Vector3(f.x*S+Math.sin(heading)*6,py+.85*(f.z+(f.lift||0))*S+1.3,-f.y*S-Math.cos(heading)*6);if(!lookReady||jumped){camLook.copy(want);lookReady=true;}else camLook.lerp(want,1-Math.exp(-fdt*14));camera.lookAt(camLook);}
  const fov=f.settings.fov+(inMenu?0:Math.min(9,f.speed*.028));if(Math.abs(camera.fov-fov)>.05){camera.fov+=(fov-camera.fov)*.08;camera.updateProjectionMatrix();}
  if(wardrobe){if(!camera.view?.enabled||camera.view.fullWidth!==w||camera.view.fullHeight!==h)camera.setViewOffset(w,h,-w*.23,0,w,h);}else if(camera.view?.enabled)camera.clearViewOffset();
  const quality=f.settings.quality==='high';renderer.shadowMap.enabled=quality;const pixelRatio=quality?Math.min(window.devicePixelRatio,1.5):.8;if(renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio);

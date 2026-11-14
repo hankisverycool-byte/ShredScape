@@ -13,12 +13,20 @@ export const KICKER_CLASSES:KickerClass[]=[
  {name:'HUGE',run:210,half:64,height:100,landing:1100,color:'#d6453b'},
  {name:'GIGANTIC',run:320,half:90,height:180,landing:1700,color:'#8a4bd1'},
 ];
-export const KICKER={lipAt:16,curve:1.6,maxLaunchSpeed:420};
+export const KICKER={lipAt:16,curve:1.6,maxLaunchSpeed:420,back:1.1,backCurve:1.5};
+// How long you hold Space to fully charge a jump, and how much a jump with no charge keeps.
+export const CHARGE={time:.8,min:.3};
+export const chargeMul=(c:number)=>CHARGE.min+(1-CHARGE.min)*Math.max(0,Math.min(1,c));
 export const kickerIndex=(f:Spot)=>Math.max(0,Math.min(KICKER_CLASSES.length-1,Math.round(f.size)));
 export const kickerClass=(f:Spot)=>KICKER_CLASSES[kickerIndex(f)];
 export function kickerShape(f:Spot){const c=kickerClass(f),lip=f.y+KICKER.lipAt;return{start:lip-c.run,lip,run:c.run,half:c.half,height:c.height};}
 // Height of the kicker surface under (x,y); 0 when not on it.
-export function kickerLift(f:Spot,x:number,y:number){const k=kickerShape(f);if(Math.abs(x-f.x)>k.half||y<k.start||y>k.lip)return 0;return k.height*Math.pow((y-k.start)/k.run,KICKER.curve);}
+// A kicker is a mound of snow: the face rises to the lip, the back slopes down to the ground, and the sides round off into the hill.
+const side=(f:Spot,x:number)=>{const k=kickerShape(f),u=(Math.abs(x-f.x)/k.half-.5)/.5;if(u<=0)return 1;if(u>=1)return 0;return 1-u*u*(3-2*u);};
+export function kickerLift(f:Spot,x:number,y:number){const k=kickerShape(f);if(y<k.start||y>k.lip)return 0;return side(f,x)*k.height*Math.pow((y-k.start)/k.run,KICKER.curve);}
+export function kickerBack(f:Spot){return kickerShape(f).run*KICKER.back;}
+// Full surface including the back slope: what you land on when you come down past the lip.
+export function kickerSurface(f:Spot,x:number,y:number){const k=kickerShape(f);if(y<=k.lip)return kickerLift(f,x,y);const t=(y-k.lip)/kickerBack(f);if(t>=1)return 0;return side(f,x)*k.height*Math.pow(1-t,KICKER.backCurve);}
 // How steeply the surface climbs at y (rise per unit travelled). The lip is the steepest point.
 export function kickerSlope(f:Spot,y:number){const k=kickerShape(f),t=Math.max(.001,Math.min(1,(y-k.start)/k.run));return k.height*KICKER.curve*Math.pow(t,KICKER.curve-1)/k.run;}
 // Rolling off the lip WITHOUT jumping: you only leave along the surface and sag off it, so you get a small hop (40% of what the lip slope would give).
@@ -27,8 +35,8 @@ export const ROLL_OFF=.4;
 export function kickerExitVz(f:Spot,vy:number){return ROLL_OFF*Math.max(0,Math.min(vy,KICKER.maxLaunchSpeed))*kickerSlope(f,kickerShape(f).lip);}
 // Jumping off the face: you keep the surface's upward speed and add a pop. The pop is full strength at the lip and fades
 // the earlier you jump (down to 35% a third of the way up the face), so timing the jump at the lip is what makes big air.
-export function kickerPop(f:Spot,y:number){const k=kickerShape(f),q=1-.65*Math.max(0,Math.min(1,(k.lip-y)/(k.run*.35)));return (110+14*kickerIndex(f))*q;}
-export function kickerJumpVz(f:Spot,y:number,vy:number){return Math.max(0,Math.min(vy,KICKER.maxLaunchSpeed))*kickerSlope(f,y)+kickerPop(f,y);}
+export function kickerPop(f:Spot,y:number,charge=1){const k=kickerShape(f),q=1-.65*Math.max(0,Math.min(1,(k.lip-y)/(k.run*.35)));return (110+14*kickerIndex(f))*q*chargeMul(charge);}
+export function kickerJumpVz(f:Spot,y:number,vy:number,charge=1){return Math.max(0,Math.min(vy,KICKER.maxLaunchSpeed))*kickerSlope(f,y)+kickerPop(f,y,charge);}
 
 // Rail (round bar) or box (wide, lower, easier). Runs along y, centred on the feature.
 export function railShape(f:Spot){const box=f.seed%2===1,len=(box?140:170)*f.size;return{box,start:f.y-len/2,end:f.y+len/2,len,half:box?18:11,height:box?11:14};}

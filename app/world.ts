@@ -35,11 +35,11 @@ export const MOUNTAINS=[
 ];
 export const mountainAt=(x:number)=>MOUNTAINS.find(m=>x<m.x1)||MOUNTAINS[MOUNTAINS.length-1];
 // ---------- terrain ----------
-const L0=-1000,L1=10000,DROP=330;
+const L0=-1000,L1=10000,DROP=260;
 // Fall line: steep for the top two thirds, easing to a gentle valley floor (Hermite curve, slope 1.3 -> .12).
 const fallCurve=(t:number)=>1.3*(t*t*t-2*t*t+t)+(-2*t*t*t+3*t*t)+.12*(t*t*t-t*t);
-const RIDGES=[{x:-2050,h:22,s:420},{x:-420,h:22,s:420},{x:1650,h:20,s:420}];
-const PEAKS=[{x:-2900,y:-250,h:40,sx:700,sy:650},{x:-1300,y:200,h:22,sx:600,sy:600},{x:480,y:-250,h:55,sx:650,sy:650},{x:2550,y:-250,h:48,sx:650,sy:650}];
+const RIDGES=[{x:-2050,h:9,s:520},{x:-420,h:9,s:520},{x:1650,h:8,s:520}];
+const PEAKS=[{x:-2900,y:-250,h:24,sx:900,sy:800},{x:-1300,y:200,h:12,sx:800,sy:700},{x:480,y:-250,h:30,sx:900,sy:800},{x:2550,y:-250,h:26,sx:900,sy:800}];
 function parkInfluence(x:number,y:number){let m=0;for(const z of PARKS)m=Math.max(m,1-smooth(0,260,rectDist(z,x,y)));return m;}
 function raw(x:number,y:number){
  const t=(clamp(y,L0,L1)-L0)/(L1-L0);
@@ -48,8 +48,8 @@ function raw(x:number,y:number){
  for(const r of RIDGES)h+=fade*r.h*Math.exp(-((x-r.x)**2)/(2*r.s*r.s)); // ridges between the mountains, fading out into the valley
  for(const p of PEAKS)h+=p.h*Math.exp(-((x-p.x)**2/(2*p.sx*p.sx)+(y-p.y)**2/(2*p.sy*p.sy)));
  const calm=(1-.85*parkInfluence(x,y))*(1-smooth(.8,.9,t)); // rolling relief, quiet in parks and flat in the valley
- h+=calm*(3.2*Math.sin(x*.0021+y*.0011)+2.4*Math.sin(x*.0047-y*.0023+1.3)+1.4*Math.sin(x*.0093+y*.0051));
- return h+Math.max(0,Math.abs(x)-3300)*.06; // the outer walls
+ h+=calm*(2.2*Math.sin(x*.0017+y*.0009)+1.1*Math.sin(x*.0038-y*.0019+1.3)+.4*Math.sin(x*.0083+y*.0047));
+ return h+Math.max(0,Math.abs(x)-3300)*.03; // the outer walls
 }
 // ---------- places ----------
 export type Location={id:string;name:string;x:number;y:number;color:string;kind:'summit'|'park'|'town'|'lake'|'bowl';description:string};

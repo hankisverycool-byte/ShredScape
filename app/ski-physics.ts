@@ -8,7 +8,7 @@ export const SNOW:Record<Snow,{grip:number;scrape:number;drag:number;label:strin
  ice:{grip:380,scrape:280,drag:5,label:'Ice'},
 };
 // drag = snow friction (constant); air drag grows with speed squared.
-export const GRAVITY=2800,AIR=.0008,PUSH=145,TURN_RATE=1.7;
+export const GRAVITY=3550,AIR=.0008,PUSH=145,TURN_RATE=1.7;
 export const wrap=(a:number)=>Math.atan2(Math.sin(a),Math.cos(a));
 export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;pushScale?:number;tuck?:number;rand?:()=>number};
 export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:number){

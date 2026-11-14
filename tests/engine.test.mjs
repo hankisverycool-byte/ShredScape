@@ -10,18 +10,28 @@ let callback;
 globalThis.requestAnimationFrame=fn=>(callback=fn,1);
 globalThis.cancelAnimationFrame=()=>{};
 function setup(){let snapshot;const game=createGame({},s=>snapshot=s);let now=performance.now();function tick(seconds){for(let i=0;i<Math.round(seconds*200);i++){now+=5;callback(now);}}game.start();return{game,tick,get state(){return snapshot}};}
-test('airborne A/D rotates the rider without changing travel heading and releasing stops it',()=>{
- const s=setup();s.game.input('jump',true);s.game.input('right',true);s.tick(.4);s.game.input('right',false);
- const rotation=globalThis.frameState.spin;assert.ok(rotation>3&&rotation<3.3);assert.equal(globalThis.frameState.angle,0);
- s.tick(.15);assert.equal(globalThis.frameState.spin,rotation);s.tick(.5);assert.ok(s.state.score>=360);assert.equal(s.state.bailed,false);s.game.destroy();
+const charged=s=>{s.game.input('jump',true);s.tick(.9);s.game.input('jump',false);};
+test('Space charges while held and jumps on release: a tap hops, a full charge pops',()=>{
+ const tap=setup();tap.game.input('jump',true);tap.game.input('jump',false);tap.tick(.05);let hop=0;for(let i=0;i<150;i++){tap.tick(.01);hop=Math.max(hop,globalThis.frameState.z||0);}tap.game.destroy();
+ const full=setup();full.game.input('jump',true);full.tick(.4);const mid=full.state.charge;full.tick(.6);assert.ok(mid>.3&&mid<.7,'charge '+mid);assert.equal(full.state.charge,1);assert.equal(full.state.airborne,false);
+ full.game.input('jump',false);let top=0;for(let i=0;i<150;i++){full.tick(.01);top=Math.max(top,globalThis.frameState.z||0);}full.game.destroy();
+ assert.ok(top>hop*2,`full ${top.toFixed(0)} vs tap ${hop.toFixed(0)}`);
+});
+test('airborne A/D rotates the rider without changing travel heading, and keeps turning after release',()=>{
+ const s=setup();charged(s);s.game.input('right',true);s.tick(.3);s.game.input('right',false);
+ const rotation=globalThis.frameState.spin;assert.ok(rotation>.2&&rotation<3,'spin '+rotation);assert.equal(globalThis.frameState.angle,0);
+ s.tick(.1);assert.ok(globalThis.frameState.spin>rotation,'momentum carries on');s.game.destroy();
+});
+test('a flat hop cannot be turned into a big spin: holding spin the whole hop never gets past a half turn',()=>{
+ const s=setup();charged(s);s.game.input('right',true);let spin=0;for(let i=0;i<120;i++){s.tick(.01);spin=Math.max(spin,Math.abs(globalThis.frameState.spin||0));}s.game.destroy();assert.ok(spin<Math.PI,'spin '+spin.toFixed(2));
 });
 test('unfinished airborne W flip bails without banking points',()=>{
- const s=setup();s.game.input('jump',true);s.game.input('up',true);s.tick(.33);s.game.input('up',false);s.tick(.6);assert.equal(s.state.bailed,true);assert.equal(s.state.score,0);s.game.destroy();
+ const s=setup();charged(s);s.game.input('up',true);s.tick(.33);s.game.input('up',false);s.tick(.7);assert.equal(s.state.bailed,true);assert.equal(s.state.score,0);s.game.destroy();
 });
 test('pushing drives animation only on snow and stops when released',()=>{
  const s=setup();s.game.input('up',true);s.tick(.25);assert.ok(globalThis.frameState.pushPower>.9);assert.ok(globalThis.frameState.pushPhase>0);
  s.game.input('up',false);s.tick(.5);assert.ok(globalThis.frameState.pushPower<.01);
- s.game.input('jump',true);s.game.input('up',true);s.tick(.15);assert.equal(globalThis.frameState.pushPower,0);s.game.destroy();
+ charged(s);s.game.input('up',true);s.tick(.15);assert.equal(globalThis.frameState.pushPower,0);s.game.destroy();
 });
 const rails=PARK_FEATURES.filter(f=>f.kind==='rail'),kickers=PARK_FEATURES.filter(f=>f.kind==='ramp');
 const railAt=(pred)=>rails.find(pred);
@@ -36,11 +46,11 @@ test('jumping onto a rail from the air locks on; turning on it becomes a sideway
  assert.match(s.game.debugState().trick,/Railslide|Boardslide/);s.game.destroy();
 });
 // Fly kicker `k` at `kmh`, jumping at the lip, rolling off, or jumping half way up the face. Returns peak height above terrain in world metres.
-function fly(k,kmh,mode){const sh=kickerShape(k),s=setup();s.game.debugPlace(k.x,sh.start-70,0,0,kmh/.18);let peak=0,jumped=false,started=false,relanded=false;
+function fly(k,kmh,mode,rot=false){const sh=kickerShape(k),s=setup();if(mode!=='roll'){s.game.debugPlace(k.x,sh.start-70,0,0,0);s.game.input('jump',true);s.tick(.9);}s.game.debugPlace(k.x,sh.start-70,0,0,kmh/.18);let peak=0,spin=0,jumped=false,started=false,relanded=false;
  for(let i=0;i<3000;i++){s.tick(.005);const d=s.game.debugState(),frac=(d.y-sh.start)/(sh.lip-sh.start);
-  if(!jumped&&d.lift>0&&((mode==='lip'&&d.y>=sh.lip-10)||(mode==='early'&&frac>=.5))){s.game.input('jump',true);s.game.input('jump',false);jumped=true;}
-  if(d.z>0)started=true;if(started){peak=Math.max(peak,d.z);if(d.z===0&&d.lift>0&&mode==='early'){relanded=true;break;}if(d.z===0||d.bailed)break;}}
- s.game.destroy();return{peak:peak*.05,relanded};}
+  if(!jumped&&d.lift>0&&((mode==='lip'&&d.y>=sh.lip-10)||(mode==='early'&&frac>=.5))){s.game.input('jump',false);jumped=true;}
+  if(d.z>0)started=true;if(started){peak=Math.max(peak,d.z);spin=Math.max(spin,Math.abs(d.spin));if(rot&&d.z>0)s.game.input('right',true);if(d.z===0&&d.lift>0&&mode==='early'){relanded=true;break;}if(d.z===0||d.bailed)break;}}
+ s.game.destroy();return{peak:peak*.05,relanded,spin};}
 const pickKicker=size=>kickers.find(k=>k.size===size&&k.id.startsWith('air'));
 test('jumping off a kicker is what sends you up: rolling off only hops, jumping at the lip gives real air',()=>{
  for(const size of [1,3,5]){const k=pickKicker(size),roll=fly(k,50,'roll').peak,jump=fly(k,50,'lip').peak,lipH=kickerShape(k).height*.05;
@@ -49,7 +59,7 @@ test('jumping off a kicker is what sends you up: rolling off only hops, jumping 
 test('kicker sizes climb from mini to gigantic: each class sends you higher than the one below',()=>{
  const peaks=[0,1,2,3,4,5].map(sz=>fly(pickKicker(sz)||kickers.find(k=>k.size===sz),50,'lip').peak);
  for(let i=1;i<peaks.length;i++)assert.ok(peaks[i]>peaks[i-1]+.7,'sizes '+peaks.map(p=>p.toFixed(1)).join(', '));
- assert.ok(peaks[0]<3&&peaks[5]>14,'mini '+peaks[0].toFixed(1)+'m, gigantic '+peaks[5].toFixed(1)+'m');
+ assert.ok(peaks[0]<3&&peaks[5]>12,'mini '+peaks[0].toFixed(1)+'m, gigantic '+peaks[5].toFixed(1)+'m');
 });
 test('timing matters: jumping early on a big kicker gives much less air and you come down on the face',()=>{
  const k=pickKicker(5),lip=fly(k,30,'lip'),early=fly(k,30,'early');assert.ok(early.peak<lip.peak*.5,`early ${early.peak.toFixed(1)}m vs lip ${lip.peak.toFixed(1)}m`);assert.equal(early.relanded,true);
@@ -65,4 +75,13 @@ test('holding push from a standstill poles at first, then tucks once you are fas
 test('the push animation never runs fast: at 30 km/h pressing the key does not pole',()=>{
  const s=setup();s.game.debugPlace(2550,500,0,0,170);s.game.input('up',true);s.tick(.6);
  const d=s.game.debugState();assert.ok(d.pushPower<.02,'pushPower '+d.pushPower);assert.ok(d.tuck>.5);s.game.destroy();
+});
+
+test('rotation is earned by air: a mini kicker allows a turn at most, a gigantic one allows multiple',()=>{
+ const mini=fly(pickKicker(0),50,'lip',true).spin,giga=fly(pickKicker(5),60,'lip',true).spin;
+ assert.ok(mini<2*Math.PI,'mini spin '+(mini*180/Math.PI).toFixed(0)+'°');assert.ok(giga>3*Math.PI,'gigantic spin '+(giga*180/Math.PI).toFixed(0)+'°');
+});
+test('landing on the back of a kicker rides it down: the mound is solid, not a hollow ramp',()=>{
+ const k=pickKicker(2),sh=kickerShape(k),s=setup();s.game.debugPlace(k.x,sh.start-60,0,0,12);for(let i=0;i<4000;i++){s.tick(.005);if(s.game.debugState().y>sh.lip+20)break;}
+ const d=s.game.debugState();assert.ok(d.y>sh.lip,'crossed the top');assert.ok(d.lift>0||d.z>0,'still over the back of the mound: lift '+d.lift.toFixed(1)+' z '+d.z.toFixed(1));assert.equal(d.bailed,false);s.game.destroy();
 });

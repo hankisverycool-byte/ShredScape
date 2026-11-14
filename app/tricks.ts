@@ -1,10 +1,15 @@
-export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number};
+export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number;spinV?:number;flipV?:number;spinMax?:number;flipMax?:number};
 export const JUMP={gravity:440,pop:185,ramp:235};
-export const AIR_CONTROL={spinRate:Math.PI*2.5,flipRate:Math.PI*3};
-export function emptyTrick():TrickState{return{spin:0,flip:0,grabTime:0,grab:'Indy',grinding:false,names:[]};}
-// Continuous, signed input: releasing stops immediately; opposite keys cancel.
+// Rotation is momentum: keys add spin acceleration, letting go keeps you turning, and how fast you can turn depends on how hard you left the ground.
+// A flat pop only gives about a half turn; a 1080 or a double needs real air off a big kicker.
+export const AIR_CONTROL={spinAccel:9,flipAccel:10,spinBase:3,flipBase:3.2,spinGain:9,flipGain:10,damp:.12,vzRef:[170,570] as [number,number]};
+export const rotationCaps=(vz0:number)=>{const q=Math.max(0,Math.min(1,(vz0-AIR_CONTROL.vzRef[0])/(AIR_CONTROL.vzRef[1]-AIR_CONTROL.vzRef[0])));return{spinMax:AIR_CONTROL.spinBase+AIR_CONTROL.spinGain*q,flipMax:AIR_CONTROL.flipBase+AIR_CONTROL.flipGain*q};};
+export function emptyTrick(vz0=0):TrickState{return{spin:0,flip:0,grabTime:0,grab:'Indy',grinding:false,names:[],spinV:0,flipV:0,...rotationCaps(vz0)};}
+// Signed input accelerates the rotation; no input just lets it coast (with a little drag), so you can't snap-spin out of nowhere.
 export function advanceAirTrick(t:TrickState,spinInput:number,flipInput:number,dt:number){
- return {...t,spin:t.spin+Math.max(-1,Math.min(1,spinInput))*AIR_CONTROL.spinRate*dt,flip:t.flip+Math.max(-1,Math.min(1,flipInput))*AIR_CONTROL.flipRate*dt};
+ const c=rotationCaps(0),sm=t.spinMax??c.spinMax,fm=t.flipMax??c.flipMax,drag=Math.exp(-AIR_CONTROL.damp*dt),clamp=(v:number,m:number)=>Math.max(-m,Math.min(m,v));
+ const sv=clamp(((t.spinV??0)+Math.max(-1,Math.min(1,spinInput))*AIR_CONTROL.spinAccel*dt)*drag,sm),fv=clamp(((t.flipV??0)+Math.max(-1,Math.min(1,flipInput))*AIR_CONTROL.flipAccel*dt)*drag,fm);
+ return {...t,spinV:sv,flipV:fv,spin:t.spin+sv*dt,flip:t.flip+fv*dt};
 }
 export function landingResult(t:TrickState){
  const spin=Math.abs(t.spin),flip=Math.abs(t.flip),turn=Math.PI*2;
