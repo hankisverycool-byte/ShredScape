@@ -43,4 +43,4 @@ export function railShape(f:Spot){const box=f.seed%2===1,len=(box?140:170)*f.siz
 export function onRail(f:Spot,x:number,y:number,pad=0){const r=railShape(f);return Math.abs(x-f.x)<=r.half+pad&&y>=r.start-pad&&y<=r.end+pad;}
 // Sliding sideways vs along the rail, named for the gear.
 // Along the rail: 50–50. Sideways: a board/rail slide one way and a lipslide the other, so a switch-up (turning the other way round) changes the trick.
-export function grindName(angle:number,board:boolean,fakie:boolean){const s=Math.sin(angle);return Math.abs(s)>.6?(s>0?(board?'Boardslide':'Railslide'):'Lipslide'):(fakie?'Switch 50–50':'50–50');}
+export function grindName(angle:number,board:boolean,fakie:boolean,bike=false){const s=Math.sin(angle);return Math.abs(s)>.6?(s>0?(board?'Boardslide':bike?'Frame slide':'Railslide'):'Lipslide'):(fakie?'Switch 50–50':bike?'Ski grind':'50–50');}

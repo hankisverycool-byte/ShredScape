@@ -44,26 +44,34 @@ function ensureMap(cb:()=>void){
 function useMap(){const [,set]=useState(0);useEffect(()=>{ensureMap(()=>set(n=>n+1));},[]);return cache;}
 const arrow=(angle:number)=>`rotate(${90+angle*180/Math.PI})`;
 
-export function WorldMap({x,y,angle,onTravel}:{x:number;y:number;angle:number;onTravel:(id:string)=>void}){
- useMap();const [px,py]=toMap(x,y);
+export type Waypoint={x:number;y:number;name:string};
+export function WorldMap({x,y,angle,selected,onSelect,waypoint,onPick}:{x:number;y:number;angle:number;selected?:string;onSelect:(id:string)=>void;waypoint?:Waypoint|null;onPick:(x:number,y:number)=>void}){
+ useMap();const [px,py]=toMap(x,y),wp=waypoint?toMap(waypoint.x,waypoint.y):null;
+ // Tap anywhere on the map to drop a waypoint there.
+ function click(e:React.MouseEvent<SVGSVGElement>){const r=e.currentTarget.getBoundingClientRect(),vx=-40+(e.clientX-r.left)/r.width*(W+80),vy=-24+(e.clientY-r.top)/r.height*(H+48);
+  const wx=BOUNDS.minX+vy/PX,wy=BOUNDS.minY+vx/PX;if(wx>=BOUNDS.minX&&wx<=BOUNDS.maxX&&wy>=BOUNDS.minY&&wy<=BOUNDS.maxY)onPick(Math.round(wx),Math.round(wy));}
  return <div className="world-map2">
-  <svg viewBox={`-40 -24 ${W+80} ${H+48}`} role="img" aria-label="Aspen valley map">
+  <svg viewBox={`-40 -24 ${W+80} ${H+48}`} role="img" aria-label="Aspen mountain map. Tap the map to set a waypoint." onClick={click}>
    {cacheUrl?<image href={cacheUrl} width={W} height={H}/>:<rect width={W} height={H} fill="#dfe9e4"/>}
    {MOUNTAINS.map(m=>{const [mx,my]=toMap(m.x,-560);return <text key={m.id} className="map-mtn" x={mx} y={my} textAnchor="middle">{m.name.toUpperCase()}</text>;})}
-   {ZONES.map(z=>{const [ax,ay]=toMap(z.x0,z.y0),[bx,by]=toMap(z.x1,z.y1),x0=Math.min(ax,bx),y0=Math.min(ay,by);return <g key={z.id}><rect className={'map-zone '+z.kind} x={x0} y={y0} width={Math.abs(bx-ax)} height={Math.abs(by-ay)} stroke={z.color} fill={z.color}/><text className="map-zone-label" x={x0+Math.abs(bx-ax)/2} y={y0-4} textAnchor="middle">{z.name}</text></g>;})}
-   {LOCATIONS.map(l=>{const [lx,ly]=toMap(l.x,l.y);return <g key={l.id} className="map-pin" transform={`translate(${lx},${ly})`} onClick={()=>onTravel(l.id)} role="button" aria-label={'Travel to '+l.name}><circle r="7" fill={l.color} stroke="#13261e" strokeWidth="2.5"/></g>;})}
-   <g transform={`translate(${px},${py}) ${arrow(angle)}`}><path d="M0,-13 L9,9 L0,4 L-9,9 Z" fill="#ee7f4a" stroke="#fff" strokeWidth="2.5"/></g>
+   {ZONES.map(z=>{const [ax,ay]=toMap(z.x0,z.y0),[bx,by]=toMap(z.x1,z.y1),x0=Math.min(ax,bx),y0=Math.min(ay,by);return <g key={z.id}><rect className={'map-zone '+z.kind} x={x0} y={y0} width={Math.abs(bx-ax)} height={Math.abs(by-ay)} stroke={z.color} fill={z.color}/>{!LOCATIONS.some(l=>l.name===z.name)&&<text className="map-zone-label" x={x0+Math.abs(bx-ax)/2} y={y0-4} textAnchor="middle">{z.name}</text>}</g>;})}
+   {TRAILS.map(t=>{const ym=(t.pts[0][0]+t.pts[t.pts.length-1][0])/2,xm=trailX(t,ym)!,[tx,ty]=toMap(xm,ym);return <text key={t.id} className={'map-trail '+t.level} x={tx} y={ty+(t.id==='spar-gulch'?-6:-5)} textAnchor="middle">{t.name}</text>;})}
+   {wp&&<g><line x1={px} y1={py} x2={wp[0]} y2={wp[1]} stroke="#ff4a1c" strokeWidth="3" strokeDasharray="8 6"/><g transform={`translate(${wp[0]},${wp[1]})`}><path d="M0,0 L0,-26" stroke="#13261e" strokeWidth="3"/><path d="M0,-26 L18,-20 L0,-14 Z" fill="#ff4a1c" stroke="#fff" strokeWidth="1.5"/><circle r="4" fill="#13261e"/></g><text className="map-wp-label" x={wp[0]+22} y={wp[1]-30}>{waypoint!.name}</text></g>}
+   {LOCATIONS.map(l=>{const [lx,ly]=toMap(l.x,l.y),sel=selected===l.id;return <g key={l.id} className={'map-pin'+(sel?' sel':'')} transform={`translate(${lx},${ly})`} onClick={e=>{e.stopPropagation();onSelect(l.id);}} role="button" aria-label={'Select '+l.name}><circle r="20" fill="transparent"/>{sel&&<circle r="15" fill="none" stroke="#ff4a1c" strokeWidth="3"/>}<circle r="9" fill={l.color} stroke="#13261e" strokeWidth="3"/><text className="map-pin-label" y="-16" textAnchor="middle">{l.name}</text></g>;})}
+   <g transform={`translate(${px},${py})`}><g transform={arrow(angle)}><path d="M0,-15 L10,10 L0,5 L-10,10 Z" fill="#ee7f4a" stroke="#fff" strokeWidth="3"/></g><text className="map-you" y="30" textAnchor="middle">YOU</text></g>
   </svg>
   <span className="map-north">Downhill <small>→</small></span>
  </div>;
 }
 
-export function MiniMap({x,y,angle,peers=[]}:{x:number;y:number;angle:number;peers?:{x:number;y:number;outfit:{jacket:string}}[]}){
+export function MiniMap({x,y,angle,peers=[],waypoint}:{x:number;y:number;angle:number;peers?:{x:number;y:number;outfit:{jacket:string}}[];waypoint?:Waypoint|null}){
  const ref=useRef<HTMLCanvasElement>(null),ready=useMap();
  useEffect(()=>{const c=ref.current;if(!c)return;const ctx=c.getContext('2d')!,size=c.width,span=1500*PX,[px,py]=toMap(x,y),k=size/span;
   ctx.clearRect(0,0,size,size);ctx.fillStyle='#dfe9e4';ctx.fillRect(0,0,size,size);if(ready)ctx.drawImage(ready,px-span/2,py-span/2,span,span,0,0,size,size);
   for(const p of peers){const [qx,qy]=toMap(p.x,p.y);ctx.fillStyle=p.outfit.jacket;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(size/2+(qx-px)*k,size/2+(qy-py)*k,5,0,7);ctx.fill();ctx.stroke();}
+  if(waypoint){const [qx,qy]=toMap(waypoint.x,waypoint.y);let dx=(qx-px)*k,dy=(qy-py)*k;const m=size/2-10,out=Math.abs(dx)>m||Math.abs(dy)>m;if(out){const f=m/Math.max(Math.abs(dx),Math.abs(dy));dx*=f;dy*=f;}
+   ctx.save();ctx.translate(size/2+dx,size/2+dy);ctx.fillStyle='#ff4a1c';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();if(out){ctx.rotate(Math.atan2(dy,dx)+Math.PI/2);ctx.moveTo(0,-9);ctx.lineTo(7,6);ctx.lineTo(-7,6);}else{ctx.moveTo(0,-10);ctx.lineTo(8,0);ctx.lineTo(0,10);ctx.lineTo(-8,0);}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
   ctx.save();ctx.translate(size/2,size/2);ctx.rotate(Math.PI/2+angle);ctx.fillStyle='#ee7f4a';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(8,8);ctx.lineTo(0,4);ctx.lineTo(-8,8);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
- },[x,y,angle,peers,ready]);
+ },[x,y,angle,peers,ready,waypoint]);
  return <canvas ref={ref} className="minimap" width={180} height={180} aria-label="Minimap"/>;
 }

@@ -8,7 +8,7 @@ const PRESENCE_MS = 10_000;
 const ROOM_LIFETIME_MS = 6 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 4096;
 
-type Outfit = { jacket: string; pants: string; hat: string; gear: "skis" | "snowboard"; avatar?: "explorer" | "classic"; kit?: string; poles?: "none" | "carbon" | "kit"; helmet?: string };
+type Outfit = { jacket: string; pants: string; hat: string; gear: "skis" | "snowboard" | "skibike"; avatar?: "explorer" | "classic"; kit?: string; poles?: "none" | "carbon" | "kit"; helmet?: string };
 type Motion = { spin:number; flip:number; pushPhase:number; pushPower:number; grab:number };
 type State = { x: number; y: number; z: number; angle: number; score: number; outfit: Outfit; motion:Motion };
 type PlayerRow = { id: string; name: string; outfit: string; x: number; y: number; z: number; angle: number; score: number };
@@ -34,7 +34,7 @@ function outfit(value: unknown): Outfit {
       throw new HttpError(400, "Choose a valid clothing color.");
     }
   }
-  if (data.gear !== "skis" && data.gear !== "snowboard") throw new HttpError(400, "Choose skis or a snowboard.");
+  if (data.gear !== "skis" && data.gear !== "snowboard" && data.gear !== "skibike") throw new HttpError(400, "Choose skis, a snowboard or a ski bike.");
   return { jacket: data.jacket as string, pants: data.pants as string, hat: data.hat as string, gear: data.gear, ...(data.avatar === "classic" || data.avatar === "explorer" ? {avatar:data.avatar} : {}), ...(typeof data.kit === "string" && /^[a-z]{2,16}$/.test(data.kit) ? {kit:data.kit} : {}), ...(typeof data.helmet === "string" && /^[a-z]{2,16}$/.test(data.helmet) ? {helmet:data.helmet} : {}), ...(data.poles === "none" || data.poles === "carbon" || data.poles === "kit" ? {poles:data.poles} : {}) };
 }
 

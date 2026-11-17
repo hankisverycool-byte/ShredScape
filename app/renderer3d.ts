@@ -95,7 +95,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  }
  else{box(g,'#8c7652',0,1,0,.07,2,.07);box(g,f.seed%2?'#d89b5d':'#91ae92',.42,1.8,0,.85,.5,.04);}world.add(g);return g;}
  type PoleObj={group:T.Group;shaft:T.Mesh;basket:T.Mesh;tip:T.Mesh;len:number;setLen(l:number):void};
- type Rider={imported:ReturnType<ReturnType<typeof createModelAssets>['rider']>;rig:Rig;hipRestY:number;root:T.Group;stunt:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;kneeL:T.Group;kneeR:T.Group;elbowL:T.Group;elbowR:T.Group;skiL:T.Group;skiR:T.Group;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear'];equipment:T.Object3D[];rag:Rag|null;land:number;airStart:number;wasAir:boolean;edgeSign:number;release:number;boardG:T.Group;contact:number;normals:T.Vector3[];torso:T.Group;poles:PoleObj[];pp:PoseOut|null;lastX:number;lastY:number;speedEst:number};
+ type Rider={imported:ReturnType<ReturnType<typeof createModelAssets>['rider']>;rig:Rig;hipRestY:number;root:T.Group;stunt:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;kneeL:T.Group;kneeR:T.Group;elbowL:T.Group;elbowR:T.Group;skiL:T.Group;skiR:T.Group;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear'];equipment:T.Object3D[];rag:Rag|null;land:number;airStart:number;wasAir:boolean;edgeSign:number;release:number;boardG:T.Group;bikeG:T.Group;bikePivot:T.Group;contact:number;normals:T.Vector3[];torso:T.Group;poles:PoleObj[];pp:PoseOut|null;lastX:number;lastY:number;speedEst:number};
  type Rag={start:number;tumble:number;tumbleV:number;yaw:number;yawV:number;h:number;hV:number;seed:number};
  type Debris={obj:T.Object3D;owner:Rider;vel:T.Vector3;spin:T.Vector3};const debris:Debris[]=[];
  const outfitAvatar=(o:Outfit)=>o.avatar||'explorer';
@@ -145,14 +145,21 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const imported=outfitAvatar(o)==='explorer'?models.rider(o):null;if(imported){body.traverse(n=>{if(n instanceof T.Mesh)n.visible=false;});body.add(imported.root);}
  const rig=imported?imported.rig:classicRig;
  const skiL=new T.Group(),skiR=new T.Group();body.add(skiL,skiR);
- const boardG=new T.Group(),poles:PoleObj[]=[];body.add(boardG);
+ const boardG=new T.Group(),bikeG=new T.Group(),bikePivot=new T.Group(),poles:PoleObj[]=[];body.add(boardG,bikeG);bikePivot.position.y=.62;bikeG.add(bikePivot);
  if(o.gear==='snowboard'){const equipment=models.snowboard();if(equipment){boardG.add(equipment);}else{box(boardG,'#dad1af',0,.025,0,1.9,.065,.40);box(boardG,o.hat,.48,.065,0,.35,.01,.38);for(const xx of [-.95,.95]){const tip=box(boardG,'#344c4a',xx,.055,0,.18,.07,.38);tip.rotation.z=xx>0?.28:-.28;}}}
  else{
- for(const [g,xx] of [[skiL,-.20],[skiR,.20]] as const){g.position.x=xx;const equipment=models.ski();if(equipment){g.add(equipment);}else{box(g,'#d4ab63',0,.03,-.12,.17,.065,2.1);box(g,o.hat,0,.07,-.9,.17,.05,.35);}}
- if(o.poles!=='none')for(const hand of rig.hands)poles.push(makePole(o.poles==='kit'?'kit':'carbon',kitById(o.kit).accent,hand));
+ const bike=o.gear==='skibike';
+ for(const [g,xx] of [[skiL,bike?-.27:-.20],[skiR,bike?.27:.20]] as const){g.position.x=xx;const equipment=models.ski();if(equipment){g.add(equipment);}else{box(g,'#d4ab63',0,.03,-.12,.17,.065,2.1);box(g,o.hat,0,.07,-.9,.17,.05,.35);}if(bike)g.scale.set(.85,1,.5);}
+ if(bike){ // ski bike: a front and a rear ski under a bike frame with a seat and handlebars; the rider also wears two short ski blades
+  const kit=kitById(o.kit),frameC=kit.accent,dark='#1d2125',P=bikePivot,Y=-.62,tube=(a:[number,number,number],b:[number,number,number],w:number,c:string)=>{const A=new T.Vector3(...a),B=new T.Vector3(...b),m=box(P,c,0,0,0,w,w,A.distanceTo(B));m.position.copy(A).add(B).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),B.clone().sub(A).normalize());return m;};
+  for(const [z,front] of [[.66,false],[-.66,true]] as const){box(P,dark,0,Y+.07,z,.17,.07,1.05);const tip=box(P,dark,0,Y+.12,z+(front?-.55:.55),.17,.06,.26);tip.rotation.x=front?-.5:.5;box(P,frameC,0,Y+.12,z,.07,.06,.5);}
+  tube([0,Y+.12,.66],[0,Y+.98,.28],.075,frameC);tube([0,Y+.12,-.66],[0,Y+1.34,-.42],.075,frameC);tube([0,Y+.98,.28],[0,Y+1.2,-.36],.07,frameC);tube([0,Y+.5,.46],[0,Y+.5,-.56],.05,dark);
+  box(P,dark,0,Y+1.03,.3,.26,.08,.5);box(P,dark,0,Y+1.36,-.44,.72,.055,.055);for(const sx of [-1,1])box(P,'#0e1012',sx*.38,Y+1.36,-.44,.16,.075,.075);
+ }
+ if(o.poles!=='none'&&!bike)for(const hand of rig.hands)poles.push(makePole(o.poles==='kit'?'kit':'carbon',kitById(o.kit).accent,hand));
  }
  if(name){const tag=label(name);tag.scale.set(2.8,.53,1);tag.position.y=3;root.add(tag);}scene.add(root);
- return{imported,rig,hipRestY:imported?1.35:1.25,root,stunt,body,armL:aL.pivot,armR:aR.pivot,legL:lL.pivot,legR:lR.pivot,kneeL:lL.joint,kneeR:lR.joint,elbowL:aL.joint,elbowR:aR.joint,skiL,skiR,signature:JSON.stringify(o),lastAngle:0,lastTime:0,lean:0,gear:o.gear,equipment:[boardG,skiL,skiR,...poles.map(q=>q.group)].filter(g=>g.children.length),rag:null,land:0,airStart:0,wasAir:false,edgeSign:0,release:0,boardG,contact:0,normals:[new T.Vector3(0,1,0),new T.Vector3(0,1,0)],torso,poles,pp:null,lastX:0,lastY:0,speedEst:0};
+ return{imported,rig,hipRestY:imported?1.35:1.25,root,stunt,body,armL:aL.pivot,armR:aR.pivot,legL:lL.pivot,legR:lR.pivot,kneeL:lL.joint,kneeR:lR.joint,elbowL:aL.joint,elbowR:aR.joint,skiL,skiR,bikeG,bikePivot,signature:JSON.stringify(o),lastAngle:0,lastTime:0,lean:0,gear:o.gear,equipment:[boardG,bikeG,skiL,skiR,...poles.map(q=>q.group)].filter(g=>g.children.length),rag:null,land:0,airStart:0,wasAir:false,edgeSign:0,release:0,boardG,contact:0,normals:[new T.Vector3(0,1,0),new T.Vector3(0,1,0),new T.Vector3(0,1,0)],torso,poles,pp:null,lastX:0,lastY:0,speedEst:0};
  }
  let local=rider({jacket:'#da744f',pants:'#374854',hat:'#e5b95f',gear:'snowboard'});const remotes=new Map<string,Rider>();
  const previewFloor=new T.Mesh(new T.CircleGeometry(30,48),mat('#40594e'));previewFloor.rotation.x=-Math.PI/2;previewFloor.receiveShadow=true;scene.add(previewFloor);
@@ -165,14 +172,14 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const trackMat=new T.MeshBasicMaterial({color:'#aebfc2',transparent:true,opacity:.45,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,side:T.DoubleSide});
  type TrackPt={x:number;y:number;z:number;nx:number;nz:number;w:number;gap:boolean};
  const tracks=[0,1].map(()=>{const mesh=new T.Mesh(new T.BufferGeometry(),trackMat);mesh.frustumCulled=false;scene.add(mesh);return{pts:[] as TrackPt[],broken:true,mesh};});
- function layTracks(f:Frame){const board=f.outfit.gear==='snowboard';tracks[1].mesh.visible=!board;
+ function layTracks(f:Frame){const board=f.outfit.gear!=='skis';tracks[1].mesh.visible=!board;
   // Deep snow (powder, or warm soft afternoon snow) cuts wider, darker, longer-lasting grooves; firm morning corduroy leaves a thin light line.
   const depth=f.snow==='powder'?1:f.snow==='ice'?0:(f.soft||0)*.6;trackMat.opacity=.4+.35*depth;trackMat.color.set(depth>.5?'#8da3ac':'#aebfc2');
   if(f.cam||f.view!=='game'||f.z>0||(f.lift||0)>0||f.bail>0||f.speed<6){for(const t of tracks)t.broken=true;return;}
   const h=f.angle,c=f.course??f.angle,slip=Math.abs(Math.sin(h-c));
   (board?[0]:[-.2,.2]).forEach((o,i)=>{const t=tracks[i],x=f.x*S+Math.cos(h)*o,z=-f.y*S+Math.sin(h)*o,last=t.pts[t.pts.length-1],d=last?Math.hypot(last.x-x,last.z-z):99;
    if(d<.35)return;if(d>40)t.pts=[];
-   t.pts.push({x,z,y:ground(x/S,-z/S)+.07,nx:Math.cos(c),nz:Math.sin(c),w:((board?.28:.07)+slip*(board?1.4:1.1))*(1+.9*depth),gap:t.broken||d>4});t.broken=false;if(t.pts.length>(depth>.5?800:400))t.pts.shift();
+   t.pts.push({x,z,y:ground(x/S,-z/S)+.07,nx:Math.cos(c),nz:Math.sin(c),w:((f.outfit.gear==='skibike'?.1:board?.28:.07)+slip*(board?1.4:1.1))*(1+.9*depth),gap:t.broken||d>4});t.broken=false;if(t.pts.length>(depth>.5?800:400))t.pts.shift();
    const v:number[]=[];for(let k=1;k<t.pts.length;k++){const a=t.pts[k-1],b=t.pts[k];if(b.gap)continue;const ax=a.nx*a.w/2,az=a.nz*a.w/2,bx=b.nx*b.w/2,bz=b.nz*b.w/2;
     v.push(a.x-ax,a.y,a.z-az,a.x+ax,a.y,a.z+az,b.x+bx,b.y,b.z+bz,a.x-ax,a.y,a.z-az,b.x+bx,b.y,b.z+bz,b.x-bx,b.y,b.z-bz);}
    t.mesh.geometry.dispose();t.mesh.geometry=new T.BufferGeometry();t.mesh.geometry.setAttribute('position',new T.Float32BufferAttribute(v,3));});}
@@ -185,7 +192,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  // Remote riders do not send their speed: estimate it from how far they moved.
  let speed=p.speed??0;if(p.speed===undefined){r.speedEst+=((first?0:Math.hypot(p.x-r.lastX,p.y-r.lastY)/dt)-r.speedEst)*Math.min(1,dt*6);speed=r.speedEst;}
  r.lastX=p.x;r.lastY=p.y;
- const board=r.gear==='snowboard',maxLean=board?.36:.42;
+ const bike=r.gear==='skibike',board=r.gear==='snowboard',maxLean=board?.36:bike?.5:.42;
  const targetLean=p.edge!==undefined?p.edge*maxLean*(p.fakie?-1:1):first?0:Math.max(-maxLean,Math.min(maxLean,-delta/dt*.18));r.lean+=(targetLean-r.lean)*Math.min(1,dt*9);r.lastAngle=p.angle;r.lastTime=t;
  const air=p.z>0,lifted=(p.lift||0)>0,grounded=!air&&!bail;
  // Takeoff and landing timing; edge changes soften the legs for a moment.
@@ -193,7 +200,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const sign=Math.abs(p.edge||0)>.12?Math.sign(p.edge||0):0;if(sign&&r.edgeSign&&sign!==r.edgeSign)r.release=1;if(sign)r.edgeSign=sign;r.release*=Math.exp(-6*dt);
  const edge=grounded?r.lean/maxLean*(1-r.release*.6):0;
  // Pushing (poles / skating) only happens at low speed; at speed the same key is an aerodynamic tuck.
- const inp:PoseIn={speed,push:grounded?Math.min(p.pushPower||0,pushWeight(speed)):0,phase:p.pushPhase||0,tuck:grounded?p.tuck||0:0,air,airT:t-r.airStart,land:r.land,grab:!!grab||(board&&air&&((p.cross||0)>.3||(p.scissor||0)>.3)),grabStyle:p.grabStyle||(p.cross&&p.cross>.3?0:p.scissor&&p.scissor>.3?2:0),edge,skid:grounded?p.skid||0:0,fakie:!!p.fakie,board,rail:!!p.rail&&!air,absorb:grounded?Math.max(-.12,p.absorb||0):0,release:r.release,breath:Math.sin(t*1.6)};
+ const inp:PoseIn={speed,push:grounded?Math.min(p.pushPower||0,pushWeight(speed)):0,phase:p.pushPhase||0,tuck:grounded?p.tuck||0:0,air,airT:t-r.airStart,bike,land:r.land,grab:!!grab||(board&&air&&((p.cross||0)>.3||(p.scissor||0)>.3)),grabStyle:p.grabStyle||(p.cross&&p.cross>.3?0:p.scissor&&p.scissor>.3?2:0),edge,skid:grounded?p.skid||0:0,fakie:!!p.fakie,board,rail:!!p.rail&&!air,absorb:grounded?Math.max(-.12,p.absorb||0):0,release:r.release,breath:Math.sin(t*1.6)};
  const tgt=computePose(inp);r.pp=r.pp?blendPose(r.pp,tgt,Math.min(1,dt*(air?16:11))):tgt;const pp=r.pp;
  r.root.position.set(p.x*S,ground(p.x,p.y)+(p.z+(p.lift||0))*S,-p.y*S);r.root.rotation.y=-p.angle;
  // Flips rotate around the hips, with equipment carried through the motion.
@@ -209,7 +216,8 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  else{const bk=(p.backseat||0)*.3;r.skiL.position.set(-pp.stance,0,-bk-pp.insideLead*lean0);r.skiR.position.set(pp.stance,0,-bk-pp.insideLead*(1-lean0));}
  settleGear(r,p,air||lifted,dt,edge,board?[0,0]:[pp.insideLift*lean0,pp.insideLift*(1-lean0)]);
  // Q / E tricks in the air: Q crosses the skis into an X, E scissors them fore and aft.
- if(!board&&air){const cx=p.cross||0,sc=p.scissor||0;if(cx>.01){_qk.setFromAxisAngle(_Y,-cx*.62);r.skiL.quaternion.multiply(_qk);_qk.setFromAxisAngle(_Y,cx*.62);r.skiR.quaternion.multiply(_qk);}if(sc>.01){r.skiL.position.z-=sc*.5;r.skiR.position.z+=sc*.5;_qk.setFromAxisAngle(_Y,sc*.14);r.skiL.quaternion.multiply(_qk);_qk.setFromAxisAngle(_Y,-sc*.14);r.skiR.quaternion.multiply(_qk);}}
+ if(bike){const cx=air?p.cross||0:0,sc=air?p.scissor||0:0;r.bikePivot.rotation.set(0,sc*.9,cx*1.3);} // Q: tabletop (bike rolls flat), E: whip (bike swings sideways)
+ if(!board&&!bike&&air){const cx=p.cross||0,sc=p.scissor||0;if(cx>.01){_qk.setFromAxisAngle(_Y,-cx*.62);r.skiL.quaternion.multiply(_qk);_qk.setFromAxisAngle(_Y,cx*.62);r.skiR.quaternion.multiply(_qk);}if(sc>.01){r.skiL.position.z-=sc*.5;r.skiR.position.z+=sc*.5;_qk.setFromAxisAngle(_Y,sc*.14);r.skiL.quaternion.multiply(_qk);_qk.setFromAxisAngle(_Y,-sc*.14);r.skiR.quaternion.multiply(_qk);}}
  const rig=r.rig;
  for(const side of [0,1] as const){
   const g=board?r.boardG:side?r.skiR:r.skiL,sx=side?1:-1;
@@ -245,7 +253,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const UP=new T.Vector3(0,1,0),_q=new T.Quaternion(),_q2=new T.Quaternion(),_q3=new T.Quaternion(),_v=new T.Vector3(),_n=new T.Vector3(),_e=new T.Euler();
  function settleGear(r:Rider,p:Motion,lifted:boolean,dt:number,edgeAmt:number,lifts:[number,number]){
   r.contact+=((lifted?0:1)-r.contact)*Math.min(1,dt*(lifted?14:9));
-  const board=r.gear==='snowboard',parts=board?[r.boardG]:[r.skiL,r.skiR];
+  const board=r.gear==='snowboard',parts=board?[r.boardG]:r.gear==='skibike'?[r.skiL,r.skiR,r.bikeG]:[r.skiL,r.skiR];
   for(const g of parts)g.quaternion.identity();
   if(r.contact<.01)return;
   r.root.updateMatrixWorld(true);
@@ -260,7 +268,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
    _q3.setFromEuler(board?_e.set(edgeAmt*.5,0,0):_e.set(0,0,edgeAmt*.55));_q.multiply(_q3);
    g.parent!.getWorldQuaternion(_q2);g.quaternion.copy(_q2.invert().multiply(_q)).slerp(_q3.identity(),1-r.contact);
    // Height: rest on whichever is higher, the snow under the binding or the tip-tail chord (bridges dips, never clips crests).
-   const h=ground(gx,gy),chord=(ground(gx+fx*half,gy+fy*half)+ground(gx-fx*half,gy-fy*half))/2,target=Math.max(h,chord)+.015-sink+lifts[i];
+   const h=ground(gx,gy),chord=(ground(gx+fx*half,gy+fy*half)+ground(gx-fx*half,gy-fy*half))/2,target=Math.max(h,chord)+.015-sink+(lifts[i]||0);
    const wy=_v.y;_v.y=wy+(target-wy)*r.contact;g.parent!.worldToLocal(_v);g.position.copy(_v);
   });
  }
@@ -309,7 +317,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const jumped=Math.hypot(f.x-lastX,f.y-lastY)>100;lastX=f.x;lastY=f.y;
  {const goal=f.speed>20&&f.course!==undefined?f.course:f.angle+(f.fakie?Math.PI:0);if(jumped)camHeading=goal;camHeading+=Math.atan2(Math.sin(goal-camHeading),Math.cos(goal-camHeading))*(1-Math.exp(-fdt*(f.speed>20?5:1)));}
  const heading=inMenu?f.angle:camHeading+(f.settings.debugYaw||0);const dbg=f.settings.debugCam;const dist=f.settings.cameraDistance+(inMenu?0:Math.min(3,f.speed*.006));
- const target=wardrobe?new T.Vector3(f.x*S+3.4,py+1.9,-f.y*S-4.2):inMenu?new T.Vector3(f.x*S+Math.sin(f.clock*.05)*13,py+5.5,-f.y*S+16):new T.Vector3(f.x*S-Math.sin(heading)*dist,py+.8*(f.z+(f.lift||0))*S+4.2,-f.y*S+Math.cos(heading)*dist);
+ const target=wardrobe?new T.Vector3(f.x*S+3.4,py+1.9,-f.y*S-4.2):inMenu?new T.Vector3(f.x*S+Math.sin(f.clock*.05)*13,py+5.5,-f.y*S+16):new T.Vector3(f.x*S-Math.sin(heading)*dist,py+.8*(f.z+(f.lift||0))*S+4.2-Math.max(0,f.absorb||0)*.45,-f.y*S+Math.cos(heading)*dist);
  if(!wardrobe)target.y=Math.max(target.y,ground(target.x/S,-target.z/S)+3.4);
  if(!camReady||jumped||camera.position.distanceTo(target)>75){camera.position.copy(target);camReady=true;}{const ah=1-Math.exp(-fdt*(inMenu?4:10)),av=1-Math.exp(-fdt*(inMenu?4:5.5));camera.position.x+=(target.x-camera.position.x)*ah;camera.position.z+=(target.z-camera.position.z)*ah;camera.position.y+=(target.y-camera.position.y)*av;}
  // Whatever the smoothing did, never let the camera sink into a slope or a kicker.
@@ -320,7 +328,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   camera.position.y=Math.max(camera.position.y,need);}if(shake>.01&&!inMenu)camera.position.add(new T.Vector3((Math.random()-.5)*shake*.5,(Math.random()-.5)*shake*.4,0));
  if(dbg&&!inMenu){const a=f.angle+dbg.yaw;camera.position.set(f.x*S-Math.sin(a)*dbg.dist,py+(f.z+(f.lift||0))*S+dbg.height,-f.y*S+Math.cos(a)*dbg.dist);camera.lookAt(f.x*S,py+(f.z+(f.lift||0))*S+(dbg.look??1.2),-f.y*S);}
  else if(wardrobe)camera.lookAt(f.x*S,py+1.25,-f.y*S);else if(inMenu)camera.lookAt(f.x*S,py+1,-f.y*S-7);else{const want=new T.Vector3(f.x*S+Math.sin(heading)*6,py+.85*(f.z+(f.lift||0))*S+1.3,-f.y*S-Math.cos(heading)*6);if(!lookReady||jumped){camLook.copy(want);lookReady=true;}else camLook.lerp(want,1-Math.exp(-fdt*14));camera.lookAt(camLook);}
- const fov=f.settings.fov+(inMenu?0:Math.min(9,f.speed*.028));if(Math.abs(camera.fov-fov)>.05){camera.fov+=(fov-camera.fov)*.08;camera.updateProjectionMatrix();}
+ const fov=f.settings.fov+(inMenu?0:Math.min(9,f.speed*.028)+Math.min(5,f.z*S*.4));if(Math.abs(camera.fov-fov)>.05){camera.fov+=(fov-camera.fov)*.08;camera.updateProjectionMatrix();}
  // Broadcast replay cameras: a chase cam, a static side cam, a low cam ahead of the rider, an orbit and a wide. Static cams stay put and pan to follow.
  if(f.cam&&!inMenu){const now=performance.now(),rdt=Math.min(.05,(now-rcT)/1000);rcT=now;const rx=f.x*S,rz=-f.y*S,ry=py+(f.z+(f.lift||0))*S+1,hd=f.course??f.angle,fx=Math.sin(hd),fz=-Math.cos(hd),px=-fz,pz=fx,mode=f.cam.mode,R=new T.Vector3(rx,ry,rz);
   if(f.cam.id!==rcId){rcId=f.cam.id;rcFirst=true;const sd=Math.sin(rcId*12.9898)>0?1:-1;

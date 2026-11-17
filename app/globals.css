@@ -315,3 +315,34 @@ kbd{font:700 11px var(--disp);letter-spacing:.8px;color:var(--ink);padding:2px 7
 .world-map2{height:auto!important;min-height:0!important;display:block!important}
 .world-map2 svg{width:100%!important;height:auto!important;max-height:none!important}
 .destinations{max-height:none!important;min-height:0!important;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));overflow:visible!important}
+
+.shop-tabs{display:flex;gap:6px;margin:-6px 0 18px}
+.shop-tabs button{padding:10px 20px;background:#ffffff10;box-shadow:inset 0 0 0 1px var(--line);font:800 italic 16px var(--disp);letter-spacing:2px;clip-path:var(--card);--cut:8px}
+.shop-tabs button.active{background:var(--accent);box-shadow:none;color:#fff}
+.icon-tag{display:inline-block;font:800 12px var(--disp);letter-spacing:2px;color:#1d1400;background:var(--accent-2);padding:2px 10px 2px 8px;margin-bottom:6px;clip-path:polygon(0 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.shop-item.icon-skin{box-shadow:inset 0 0 0 2px var(--accent-2)}
+.shop-item.icon-skin .jacket-display{background:radial-gradient(ellipse at 50% 55%,#ffd36a33,transparent 70%),repeating-linear-gradient(115deg,#ffffff08 0 10px,transparent 10px 20px),#0a0f13}
+
+/* ---------- map navigation ---------- */
+.map-hint{color:var(--muted);font:600 14px var(--disp);letter-spacing:2px;text-transform:uppercase;margin:14px 0}
+.map-select{display:flex;justify-content:space-between;align-items:center;gap:24px;margin:14px 0;padding:18px 24px;background:var(--panel-2);box-shadow:inset 0 0 0 2px var(--accent);clip-path:var(--card);--cut:12px}
+.map-select small{font:700 12px var(--disp);letter-spacing:3px;color:var(--accent);text-transform:uppercase}.map-select h2{font:900 italic 30px var(--disp);text-transform:uppercase;margin:4px 0}.map-select p{margin:0;color:var(--muted);font-size:14px}
+.map-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:300px}.map-actions .play-button{margin:0;width:auto;flex:1;padding:12px 20px;font-size:20px}.map-actions .outline{margin:0;width:auto;text-align:center}
+.destinations button.on{box-shadow:inset 0 0 0 2px var(--accent);background:var(--panel-3)}
+.map-pin-label{font:800 italic 15px var(--disp);fill:#10201a;paint-order:stroke;stroke:#ffffffe6;stroke-width:4px;letter-spacing:.5px;pointer-events:none}
+.map-pin.sel .map-pin-label{fill:#c4310f}
+.map-you{font:900 italic 14px var(--disp);fill:#c4310f;paint-order:stroke;stroke:#fff;stroke-width:4px;letter-spacing:2px}
+.map-wp-label{font:900 italic 16px var(--disp);fill:#c4310f;paint-order:stroke;stroke:#fff;stroke-width:4px}
+.map-trail{font:800 italic 13px var(--disp);paint-order:stroke;stroke:#ffffffe6;stroke-width:3.5px;letter-spacing:.5px;fill:#26312c;pointer-events:none}.map-trail.green{fill:#1c7a37}.map-trail.blue{fill:#2155b3}.map-trail.black{fill:#111}
+.map-zone-label{font-size:13px!important}.map-mtn{font-size:16px!important}
+.world-map2 svg{cursor:crosshair}
+.wp-chip{position:absolute;top:128px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:7px 16px;background:#0a0e12e6;clip-path:var(--card);--cut:9px;box-shadow:inset 0 0 0 1px var(--line);z-index:3}
+.wp-chip svg{filter:drop-shadow(0 0 6px #ff4a1c)}.wp-chip b{display:block;font:900 italic 22px/1 var(--disp);color:#fff}.wp-chip small{font:700 11px var(--disp);letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+@media(max-width:650px){.map-select{flex-direction:column;align-items:stretch}.map-actions{min-width:0}.wp-chip{top:174px}}
+
+.respawn-banner{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);text-align:center;padding:8px 28px 10px;background:#6d111aee;clip-path:polygon(16px 0,100% 0,calc(100% - 16px) 100%,0 100%);pointer-events:none;z-index:4}
+.respawn-banner small{display:block;font:800 12px var(--disp);letter-spacing:4px;color:#ffb3b3}.respawn-banner b{font:900 italic 26px var(--disp);text-transform:uppercase;letter-spacing:1px}
+.respawn-fade{position:absolute;inset:0;background:#000;pointer-events:none;z-index:6;animation:rfade .9s ease-out forwards}
+@keyframes rfade{0%{opacity:1}100%{opacity:0}}
+.map-zone,.map-zone-label,.map-mtn,.map-you,.map-wp-label{pointer-events:none}
+.map-pin circle:first-child{pointer-events:all;cursor:pointer}

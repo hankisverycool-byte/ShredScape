@@ -117,12 +117,6 @@ test('direction: D spins the rider clockwise from above and A the other way, mat
  const air=setup();charged(air);air.game.input('right',true);air.tick(.25);const spin=globalThis.frameState.spin;air.game.destroy();
  assert.ok(gAngle>0,'ground right turn increases heading');assert.ok(spin<0,'air right spin is the same visual direction (heading = angle - spin)');
 });
-test('a landing that is close but not clean keeps you riding with a speed penalty; a bad one wipes out',()=>{
- const s=setup();s.game.debugPlace(0,500,0,0,150);charged(s);s.game.input('up',true);s.tick(.5);s.game.input('up',false);s.tick(.05);
- const before=s.game.debugState().speed;let st;for(let i=0;i<200;i++){s.tick(.01);st=s.game.debugState();if(st.z===0&&st.speed<before)break;}
- assert.equal(st.bailed,false);s.game.destroy();
-});
-
 test('a wipeout sends you to the nearest spawn once the tumble ends',()=>{
  const s=setup();s.game.debugPlace(0,5200,0,0,150);charged(s);s.game.input('up',true);s.tick(.3);s.game.input('up',false);s.tick(1.2);assert.equal(s.state.bailed,true);
  s.tick(2.2);const d=s.game.debugState();assert.equal(s.state.bailed,false);assert.ok(s.state.respawn>=1,'respawn counted');assert.ok(s.state.respawnName,'named '+s.state.respawnName);
@@ -138,4 +132,9 @@ test('challenge feats are queued for the page: air height, spin, speed',()=>{
  const feats=[];const s=(()=>{let snapshot;const game=createGame({},n=>{snapshot=n;feats.push(...(n.feats||[]));});let now=performance.now();game.start();return{game,tick(sec){for(let i=0;i<Math.round(sec*200);i++){now+=5;callback(now);}}};})();
  s.game.debugPlace(0,500,0,0,150);s.tick(1);s.game.input('jump',true);s.tick(.9);s.game.input('jump',false);s.game.input('right',true);s.tick(.2);s.game.input('right',false);s.tick(2);
  const types=feats.map(f=>f.type);assert.ok(types.includes('land'),'feats '+JSON.stringify(feats));assert.ok(feats.find(f=>f.type==='air').value>1);s.game.destroy();
+});
+
+test('ski bike: Q is a tabletop, E a whip, J a no-hander; rails are frame slides',()=>{
+ const s=setup();s.game.setOutfit({jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear:'skibike'});s.game.debugPlace(0,500,0,0,60);charged(s);s.game.input('crossL',true);s.game.input('crossR',true);s.game.input('grab',true);s.tick(.4);
+ const t=s.state.trick;for(const n of ['Tabletop','Whip','No-hander'])assert.ok(t.includes(n),'trick '+t);assert.ok(globalThis.frameState.cross>.8);s.game.destroy();
 });

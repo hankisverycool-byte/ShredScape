@@ -38,3 +38,16 @@ test('sloppy but close landings still count',()=>{
  assert.equal(landingResult({...emptyTrick(),spin:Math.PI+.8}).clean,true);
  assert.equal(landingResult({...emptyTrick(),flip:2*Math.PI-.9}).clean,true);
 });
+
+test('landings: clean within the tolerance, sketchy a little past it (speed penalty, no wipeout), wipeout beyond',()=>{
+ const t=(spin,flip=0)=>landingResult({...emptyTrick(),spin,flip});
+ assert.equal(t(Math.PI+1.0).clean,true);
+ const sk=t(Math.PI+1.25);assert.equal(sk.clean,false);assert.equal(sk.sketchy,true);
+ const bad=t(Math.PI+1.7);assert.equal(bad.clean,false);assert.equal(bad.sketchy,false);
+ assert.equal(t(0,2*Math.PI-1.45).sketchy,true);assert.equal(t(0,Math.PI).sketchy,false);
+});
+
+test('ski bike tricks: Q is a tabletop and E a whip',()=>{
+ const n=(o)=>landingResult({...emptyTrick(),...o}).names;
+ assert.ok(n({bike:true,crossTime:.5}).includes('Tabletop'));assert.ok(n({bike:true,scissorTime:.5}).includes('Whip'));assert.ok(n({board:true,crossTime:.5}).includes('Method'));assert.ok(n({crossTime:.5}).includes('Cross'));
+});

@@ -1,5 +1,5 @@
-export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number;spinV?:number;flipV?:number;spinMax?:number;flipMax?:number;grinds?:string[];switchups?:number;link?:number;crossTime?:number;scissorTime?:number;board?:boolean};
-export const JUMP={gravity:440,pop:260,ramp:300};
+export type TrickState={spin:number;flip:number;grabTime:number;grab:string;grinding:boolean;names:string[];grind?:string;grindDist?:number;spinV?:number;flipV?:number;spinMax?:number;flipMax?:number;grinds?:string[];switchups?:number;link?:number;crossTime?:number;scissorTime?:number;board?:boolean;bike?:boolean};
+export const JUMP={gravity:440,fall:1.22,pop:260,ramp:300};
 // Rotation is momentum: keys add spin acceleration, letting go keeps you turning, and how fast you can turn depends on how hard you left the ground.
 // A flat pop only gives about a half turn; a 1080 or a double needs real air off a big kicker.
 export const AIR_CONTROL={spinAccel:19,flipAccel:15,spinBase:4.6,flipBase:4.2,spinGain:11,flipGain:11.5,damp:.12,vzRef:[240,700] as [number,number]};
@@ -22,8 +22,8 @@ export function landingResult(t:TrickState){
  if(flipTurns){const direction=t.flip<0?'Frontflip':'Backflip';names.push((flipTurns>1?flipTurns+'× ':'')+direction);base+=flipTurns*500;}
  if(t.grabTime>.12){names.push(t.grab);base+=Math.round(120+Math.min(t.grabTime,2)*160);}
  // Q / E tricks: skis crossed or scissored (on a board: method / stalefish). Hold them for a moment to count.
- if((t.crossTime||0)>.15){names.push(t.board?'Method':'Cross');base+=100+Math.round(Math.min(t.crossTime||0,2)*150);}
- if((t.scissorTime||0)>.15){names.push(t.board?'Stalefish':'Scissor');base+=100+Math.round(Math.min(t.scissorTime||0,2)*150);}
+ if((t.crossTime||0)>.15){names.push(t.board?'Method':t.bike?'Tabletop':'Cross');base+=100+Math.round(Math.min(t.crossTime||0,2)*150);}
+ if((t.scissorTime||0)>.15){names.push(t.board?'Stalefish':t.bike?'Whip':'Scissor');base+=100+Math.round(Math.min(t.scissorTime||0,2)*150);}
  // Grinds pay for the lock-on plus distance slid.
  if(t.grinding){const g=t.grinds&&t.grinds.length?t.grinds:[t.grind||'50–50'];names.push(g.join(' → '));base+=150+Math.round((t.grindDist||0)*2)+(g.length-1)*90;}
  if(t.switchups){names.push((t.switchups>1?t.switchups+'× ':'')+'Switch-up');base+=t.switchups*150;}

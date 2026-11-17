@@ -50,3 +50,8 @@ test('warm soft snow is draggier than firm snow, but ice does not change',()=>{
  const roll=(snow,soft)=>{let st={vx:0,vy:150,angle:0};for(let i=0;i<200;i++)st=stepSki(st,{steer:0,push:false,brake:false,boost:false,sensitivity:1,gradX:0,gradY:0,snow,soft},.01);return Math.hypot(st.vx,st.vy);};
  assert.ok(roll('groomed',1)<roll('groomed',0)-3,'soft '+roll('groomed',1)+' firm '+roll('groomed',0));assert.ok(roll('powder',1)<roll('powder',0));assert.equal(roll('ice',1),roll('ice',0));
 });
+
+test('a ski bike turns a little quicker and grips harder than skis',()=>{
+ const run=bike=>{let st={vx:0,vy:200,angle:0};for(let i=0;i<60;i++)st=stepSki(st,{steer:1,push:false,brake:false,boost:false,sensitivity:1,gradX:0,gradY:0,snow:'groomed',bike},.01);return st;};
+ assert.ok(run(true).angle>run(false).angle*1.05,'turn rate');
+});

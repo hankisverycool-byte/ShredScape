@@ -3,7 +3,7 @@
 // (both measured from a straight, hanging arm); `out` is how far the arm is raised outward from hanging straight down.
 // Torso pitch is the opposite way round (the torso pivots at the waist): torsoPitch < 0 folds forward.
 export type Arm={pitch:number;out:number;elbow:number;twist:number};
-export type PoseIn={speed:number;push:number;phase:number;tuck:number;air:boolean;airT:number;land:number;grab:boolean;grabStyle?:number;edge:number;skid:number;fakie:boolean;board:boolean;rail:boolean;absorb:number;release:number;breath:number};
+export type PoseIn={speed:number;push:number;phase:number;tuck:number;air:boolean;airT:number;land:number;grab:boolean;grabStyle?:number;edge:number;skid:number;fakie:boolean;board:boolean;bike?:boolean;rail:boolean;absorb:number;release:number;breath:number};
 export type PoseOut={
  flex:number;hipBack:number;hipSide:number;
  torsoPitch:number;torsoYaw:number;torsoRoll:number;
@@ -68,10 +68,15 @@ export function computePose(i:PoseIn):PoseOut{
  // --- stance
  const stance=skis?.2-.03*glide+i.skid*.04:.38,footYaw:[number,number]=skis?[0,0]:[.15,-.3];
  const e=Math.abs(i.edge);
- return{flex,hipBack:(skis?.22*flex+.12*i.tuck:.12*flex),hipSide:-i.edge*.14,
+ const out:PoseOut={flex,hipBack:(skis?.22*flex+.12*i.tuck:.12*flex),hipSide:-i.edge*.14,
   torsoPitch,torsoYaw,torsoRoll,armL:clampArm(armL),armR:clampArm(armR),
   poleTilt,poleOut,polePlant:clamp(polePlant,0,1),stance,footYaw,insideLift:skis&&!i.air?.03*e:0,insideLead:skis&&!i.air?.12*e:0,
   skate:i.board&&!i.air?i.push:0,skateU:u};
+ // Ski bike: seated on the frame, knees bent, leaning into the bars. The air grab is a no-hander (arms out wide).
+ if(i.bike){out.flex=clamp(.52+i.absorb*.3+i.land*.4+i.skid*.08-(i.air?.12:0),.3,.95);out.hipBack=.1;out.torsoPitch=-clamp(.3+.2*glide+.3*i.tuck-(i.air?.1:0),0,.9);out.torsoYaw=-i.edge*.06;out.torsoRoll=-i.edge*.12;
+  let bars:Arm={pitch:.95,out:.1,elbow:.5+.2*glide,twist:0};if(i.air&&i.grab)bars={pitch:.25,out:.95,elbow:.25,twist:0};
+  out.armL=clampArm({...bars,out:bars.out-i.edge*.08});out.armR=clampArm({...bars,out:bars.out+i.edge*.08});out.stance=.27;out.footYaw=[0,0];out.insideLift=0;out.insideLead=0;out.polePlant=0;out.skate=0;}
+ return out;
 }
 
 /** Ease one pose toward another (every number, including the arm and array members). */
