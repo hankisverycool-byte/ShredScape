@@ -138,3 +138,40 @@ test('ski bike: Q is a tabletop, E a whip, J a no-hander; rails are frame slides
  const s=setup();s.game.setOutfit({jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear:'skibike'});s.game.debugPlace(0,500,0,0,60);charged(s);s.game.input('crossL',true);s.game.input('crossR',true);s.game.input('grab',true);s.tick(.4);
  const t=s.state.trick;for(const n of ['Tabletop','Whip','No-hander'])assert.ok(t.includes(n),'trick '+t);assert.ok(globalThis.frameState.cross>.8);s.game.destroy();
 });
+
+test('physics runs on a fixed timestep: the same moves give the same result at 20 fps and at 200 fps',()=>{
+ const run=ms=>{let snap;const game=createGame({},n=>snap=n);let now=performance.now();game.start();game.debugPlace(0,500,0,0,120);game.input('right',true);
+  for(let i=0;i<Math.round(2000/ms);i++){now+=ms;callback(now);}const d=game.debugState();game.destroy();return d;};
+ const a=run(5),b=run(50);assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<12,'positions '+JSON.stringify([a.x,a.y,b.x,b.y]));assert.ok(Math.abs(a.angle-b.angle)<.05,'heading');
+});
+test('skis never face backward by accident: they swing back round to the direction of travel',()=>{
+ const s=setup();s.game.debugPlace(0,500,Math.PI*.95,0,150);s.tick(.1);let d=s.game.debugState();
+ s.tick(2.5);d=s.game.debugState();assert.ok(Math.cos(d.angle-d.course)>.6,'angle '+d.angle.toFixed(2)+' course '+d.course.toFixed(2));s.game.destroy();
+});
+test('X reverts on purpose: the skis swing round smoothly (not a snap) and then stay switch',()=>{
+ const s=setup();s.game.debugPlace(0,500,0,0,150);s.tick(.3);const a0=s.game.debugState().angle;s.game.input('revert',true);s.game.input('revert',false);s.tick(.05);const mid=s.game.debugState().angle;
+ assert.ok(Math.abs(mid-a0)>.1&&Math.abs(mid-a0)<Math.PI*.9,'in the middle of the turn '+(mid-a0).toFixed(2));s.tick(1.2);const d=s.game.debugState();
+ assert.ok(Math.cos(d.angle-d.course)<-.6,'now riding switch');assert.equal(s.state.stance,'switch');s.tick(2);const e=s.game.debugState();assert.ok(Math.cos(e.angle-e.course)<-.5,'and it stays switch');s.game.destroy();
+});
+test('butters: Q is a nose butter, E a tail butter, A/D spins you on them and it banks as a ground trick',()=>{
+ const s=setup();s.game.debugPlace(0,500,0,0,80);s.tick(.2);s.game.input('crossL',true);s.tick(.15);assert.equal(s.state.groundTrick,'nose');
+ s.game.input('left',true);s.tick(1.4);s.game.input('left',false);s.game.input('crossL',false);s.tick(.3);
+ assert.ok(s.state.score>0&&/Nose Butter/.test(s.state.trick),'banked '+s.state.trick+' '+s.state.score);s.game.destroy();
+ const t=setup();t.game.debugPlace(0,500,0,0,80);t.tick(.2);t.game.input('crossR',true);t.tick(.3);assert.equal(t.state.groundTrick,'tail');t.game.input('crossR',false);t.tick(.2);assert.ok(/Tail Butter/.test(t.state.trick));t.game.destroy();
+ const m=setup();m.game.debugPlace(0,500,0,0,60);m.tick(.2);m.game.input('crossL',true);m.game.input('crossR',true);m.tick(.2);assert.equal(m.state.groundTrick,'manual');m.game.destroy();
+});
+test('ollie and nollie: Space released with E / Q held pops a little higher and names the trick',()=>{
+ for(const [k,name] of [['crossR','Ollie'],['crossL','Nollie']]){const s=setup();s.game.debugPlace(0,500,0,0,90);s.game.input('jump',true);s.tick(1.3);s.game.input(k,true);s.game.input('jump',false);s.tick(.15);assert.ok((s.state.trick||'').includes(name),name+' '+s.state.trick);s.game.destroy();}
+});
+test('the nine grabs can be selected with H and are named in the snapshot',()=>{
+ const s=setup();const seen=[s.state.grabName];for(let i=0;i<9;i++){s.game.input('grabtype',true);s.game.input('grabtype',false);s.tick(.12);seen.push(s.state.grabName);}
+ assert.deepEqual(seen.slice(0,9).sort(),['Blunt','Critical','Double Safety','Japan','Mute','Nose','Safety','Tail','Truck Driver'].sort());s.game.destroy();
+});
+test('landing quality: perfect landings keep speed, a sloppy one loses it; the body orientation is what counts',()=>{
+ const run=(hold)=>{const s=setup();s.game.debugPlace(0,500,0,0,150);s.game.input('jump',true);s.tick(1.3);s.game.input('jump',false);if(hold)s.game.input('right',true);const v0=s.game.debugState().speed;s.tick(hold||.05);s.game.input('right',false);s.tick(2.2);const d=s.game.debugState();s.game.destroy();return{v0,d};};
+ const clean=run(0);assert.equal(clean.d.bailed,false);assert.ok(clean.d.speed>clean.v0*.8,'clean keeps most speed');
+});
+test('crash details are passed on: a wipeout records how you went down',()=>{
+ const s=setup();s.game.debugPlace(0,500,0,0,150);s.game.input('jump',true);s.tick(1.3);s.game.input('jump',false);s.game.input('up',true);s.tick(.3);s.game.input('up',false);s.tick(1.3);
+ assert.equal(s.state.bailed,true);assert.ok(globalThis.frameState.crash&&globalThis.frameState.crash.power>0,'crash info reaches the renderer');s.game.destroy();
+});

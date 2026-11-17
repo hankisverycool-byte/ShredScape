@@ -3,7 +3,7 @@
 // (both measured from a straight, hanging arm); `out` is how far the arm is raised outward from hanging straight down.
 // Torso pitch is the opposite way round (the torso pivots at the waist): torsoPitch < 0 folds forward.
 export type Arm={pitch:number;out:number;elbow:number;twist:number};
-export type PoseIn={speed:number;push:number;phase:number;tuck:number;air:boolean;airT:number;land:number;grab:boolean;grabStyle?:number;edge:number;skid:number;fakie:boolean;board:boolean;bike?:boolean;rail:boolean;absorb:number;release:number;breath:number};
+export type PoseIn={speed:number;push:number;phase:number;tuck:number;air:boolean;airT:number;land:number;grab:boolean;grabStyle?:number;edge:number;skid:number;fakie:boolean;board:boolean;bike?:boolean;airTuck?:number;airExt?:number;rail:boolean;absorb:number;release:number;breath:number};
 export type PoseOut={
  flex:number;hipBack:number;hipSide:number;
  torsoPitch:number;torsoYaw:number;torsoRoll:number;
@@ -33,12 +33,13 @@ export function computePose(i:PoseIn):PoseOut{
  let flex=(i.board?lerp(.14,.4,glide):lerp(.12,.34,glide))+i.absorb*.5+i.land*.7+i.release*.25+i.skid*.25+i.push*(.1+.14*(1-u));
  flex=Math.max(flex,i.tuck*.92);
  if(i.rail)flex=Math.max(flex,.42);
- if(i.air)flex=.12+airT*(i.grab?.62:.3);
- flex=clamp(flex,0,1);
+ // In the air: knees come up with a tuck (and fold hard for a grab), legs reach long when spread out.
+ if(i.air)flex=.12+airT*(.3+1.4*(i.airTuck||0)+(i.grab?.3:0)-.22*(i.airExt||0));
+ flex=clamp(flex,0,i.air?2.1:1); // a real tuck draws the knees well up toward the chest
  // --- torso (negative pitch = folded forward)
  let tp=(i.board?.02+.08*glide+.3*flex:.04+.16*glide+.45*flex)+i.push*(.08+.26*(1-u));
  tp=lerp(tp,.95,i.tuck);
- if(i.air)tp=.1+airT*(i.grab?.5:.25);
+ if(i.air)tp=.1+airT*(.25+.5*(i.airTuck||0)+(i.grab?.3:0)-.2*(i.airExt||0));
  const torsoPitch=-clamp(tp,0,1.05);
  const torsoYaw=i.fakie&&skis&&!i.air?.55:-i.edge*(skis?.12:.05);
  const torsoRoll=-i.edge*(skis?.19:.14);
@@ -53,6 +54,8 @@ export function computePose(i:PoseIn):PoseOut{
   A=mixArm(A,{pitch:.55,out:.2,elbow:1.1,twist:0},i.tuck);
  }
  if(i.air)A=mixArm(A,{pitch:.35,out:-.35,elbow:.5,twist:0},airT);
+ if(i.air&&(i.airExt||0)>.05)A=mixArm(A,{pitch:.15,out:.85,elbow:.2,twist:0},i.airExt!);   // spread out: arms wide
+ if(i.air&&(i.airTuck||0)>.05&&!i.grab)A=mixArm(A,{pitch:.85,out:.1,elbow:1.2,twist:0},i.airTuck!); // tucked: hands in at the chest
  if(i.rail)A={pitch:.2,out:-.8,elbow:.35,twist:0};
  let armL:Arm={...A,out:A.out-i.edge*.12},armR:Arm={...A,out:A.out+i.edge*.12}; // inside arm lifts a little in a carve
  if(i.grab&&i.air){const g=i.grabStyle||0;

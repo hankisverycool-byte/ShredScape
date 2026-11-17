@@ -10,10 +10,10 @@ export const SNOW:Record<Snow,{grip:number;scrape:number;drag:number;label:strin
 // drag = snow friction (constant); air drag grows with speed squared.
 export const GRAVITY=4100,AIR=.0008,PUSH=145,TURN_RATE=1.7;
 export const wrap=(a:number)=>Math.atan2(Math.sin(a),Math.cos(a));
-export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;bike?:boolean;soft?:number;pushScale?:number;tuck?:number;rand?:()=>number};
+export type SkiInput={steer:number;push:boolean;brake:boolean;boost:boolean;sensitivity:number;gradX:number;gradY:number;snow:Snow;pivot?:boolean;bike?:boolean;edgeAngle?:number;butter?:boolean;soft?:number;pushScale?:number;tuck?:number;rand?:()=>number};
 export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:number){
  // Warm afternoon snow (soft, 0..1) is draggier and grips a little less; ice stays hard all day.
- const S0=SNOW[inp.snow],k=inp.snow==='ice'?0:Math.max(0,Math.min(1,inp.soft||0)),S={...S0,drag:S0.drag*(1+.7*k),grip:S0.grip*(1-.15*k)*(inp.bike?1.15:1),scrape:S0.scrape*(1+.1*k)*(inp.bike?.9:1)},rand=inp.rand||Math.random;
+ const S0=SNOW[inp.snow],k=inp.snow==='ice'?0:Math.max(0,Math.min(1,inp.soft||0)),S={...S0,drag:S0.drag*(1+.7*k),grip:S0.grip*(1-.15*k)*(inp.bike?1.15:1)*(inp.butter?.35:1),scrape:S0.scrape*(1+.1*k)*(inp.bike?.9:1)*(inp.butter?.5:1)},rand=inp.rand||Math.random;
  let {vx,vy,angle}=s;
  const sp0=Math.hypot(vx,vy),course0=sp0>1?Math.atan2(vx,vy):angle;
  // Hockey stop: swing the skis across the direction of travel and brace on the edges.
@@ -23,7 +23,9 @@ export function stepSki(s:{vx:number;vy:number;angle:number},inp:SkiInput,dt:num
   // Flat pivot: holding a turn while the skis are near sideways releases the edges and spins the skis
   // through quickly, so regular <-> switch keeps momentum instead of scrubbing it.
   const across=Math.abs(Math.sin(angle-course0)),pivot=inp.pivot?1.6:inp.steer&&sp0>15&&across>.7?.8:0;
-  angle+=inp.steer*TURN_RATE*(inp.bike?1.12:1)*inp.sensitivity*dt*(1+pivot);
+  // Carving: the turn builds with edge angle and gets wider as speed climbs (radius ~ speed squared / grip); butters pivot freely on the nose or tail.
+  const edgeF=inp.edgeAngle===undefined?1:(.55+.9*inp.edgeAngle)*1.3/(1+(sp0/420)**2);
+  angle+=inp.steer*TURN_RATE*(inp.bike?1.12:1)*inp.sensitivity*edgeF*dt*(1+pivot+(inp.butter?1.4:0));
  }
  if(stopping){
   // Skis braced across the slide: momentum keeps its direction, edges scrape speed off as skis come across.

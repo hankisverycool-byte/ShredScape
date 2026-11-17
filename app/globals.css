@@ -346,3 +346,11 @@ kbd{font:700 11px var(--disp);letter-spacing:.8px;color:var(--ink);padding:2px 7
 @keyframes rfade{0%{opacity:1}100%{opacity:0}}
 .map-zone,.map-zone-label,.map-mtn,.map-you,.map-wp-label{pointer-events:none}
 .map-pin circle:first-child{pointer-events:all;cursor:pointer}
+
+/* ---------- trick popup, stance, manual balance ---------- */
+.trick-popup{position:absolute;left:50%;top:30%;transform:translateX(-50%);text-align:center;pointer-events:none;z-index:4;animation:popup 2.3s ease-out forwards;text-shadow:0 2px 12px #000a}
+.trick-popup b{display:block;font:900 italic clamp(28px,4vw,48px)/1 var(--disp);text-transform:uppercase;color:#fff;letter-spacing:1px}
+.trick-popup span{display:block;font:900 italic 30px var(--disp);color:var(--accent-2)}.trick-popup em{font:800 italic 16px var(--disp);letter-spacing:3px;color:var(--accent);font-style:normal}
+@keyframes popup{0%{opacity:0;transform:translate(-50%,16px) scale(.8)}12%{opacity:1;transform:translate(-50%,0) scale(1.06)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-30px)}}
+.stance-chip{position:absolute;left:50%;bottom:230px;transform:translateX(-50%);padding:3px 16px;background:var(--accent);color:#fff;font:900 italic 14px var(--disp);letter-spacing:4px;clip-path:var(--card);--cut:6px;pointer-events:none}
+.balance{position:absolute;left:50%;bottom:260px;transform:translateX(-50%);width:200px;height:6px;background:#ffffff2e;pointer-events:none}.balance:before{content:"";position:absolute;left:36%;right:36%;top:-2px;bottom:-2px;background:#27d17f55}.balance i{position:absolute;top:-5px;width:6px;height:16px;background:#fff;transform:translateX(-50%)}
