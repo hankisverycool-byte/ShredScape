@@ -131,7 +131,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
   if(res.sketchy){bank(res,true);combo=0;multiplier=1;grace=.45;spray(14);tricks=emptyTrick();peakAir=0;return;}
   bankFeats(res);peakAir=0;bank(res);grace=.45;spray(12);tricks=emptyTrick();}
  const keys:Record<string,string>={KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',Space:'jump',KeyJ:'grab',KeyQ:'crossL',KeyE:'crossR',KeyZ:'rollL',KeyC:'rollR',KeyX:'revert',KeyH:'grabtype',KeyR:'restart',ShiftLeft:'boost'};
- function reset(){run=idleRun();lift=0;rail=null;kicker=null;back=false;charging=false;charge=0;x=START.x;y=START.y;z=0;angle=0;speed=0;vx=0;vy=0;fakie=false;score=0;combo=0;multiplier=1;tricks=emptyTrick();bail=0;grace=1;features=nearby(x,y);pressed.clear();landing='';emit();}
+ function reset(){surfOk=false;run=idleRun();lift=0;rail=null;kicker=null;back=false;charging=false;charge=0;x=START.x;y=START.y;z=0;angle=0;speed=0;vx=0;vy=0;fakie=false;score=0;combo=0;multiplier=1;tricks=emptyTrick();bail=0;grace=1;features=nearby(x,y);pressed.clear();landing='';emit();}
  function input(action:string,down:boolean){action=keys[action]||action;const already=pressed.has(action);if(down)pressed.add(action);else pressed.delete(action);if(action==='jump'&&!down&&charging){charging=false;const c=charge;charge=0;jump(c);return;}if(!down||already)return;if(action==='restart'){reset();return;}if(action==='jump'){if(bail>.35&&bail<BAIL-.6)bail=.35;else if(z===0&&!bail&&!jumpCooldown){charging=true;charge=0;}}if(action==='grab'&&rail&&!swivel){swivel=Math.PI*(Math.sin(angle)>=0?-1:1);tricks.switchups=(tricks.switchups||0)+1;}if(action==='grabtype'&&outfit.gear!=='skibike'){grabIdx=(grabIdx+1)%GRABS.length;tricks.grab=GRABS[grabIdx].name;}
   if(action==='revert'&&z===0&&!rail&&!bail&&speed>25&&!revertT){revertTarget=angle+Math.PI;revertT=1;spray(6);}}
  function keydown(e:KeyboardEvent){if((e.target as HTMLElement)?.matches('input,select,textarea'))return;if(playing&&rp&&e.code!=='Escape'){replayKey(e);return;}if(playing&&e.code===(settings.replayKey||'KeyB')&&!e.repeat){e.preventDefault();startReplay();return;}const a=keys[e.code];if(a&&playing){e.preventDefault();input(a,true);}}
@@ -139,7 +139,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  function blur(){pressed.clear();charging=false;charge=0;}
  window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup);window.addEventListener('blur',blur);
  // Shuttle to a spawn point. A wipeout sends you to the nearest one once the tumble is over.
- function travelTo(dest:{x:number;y:number}){run=idleRun();lift=0;rail=null;kicker=null;back=false;swivel=0;chain=0;x=dest.x;y=dest.y;z=0;vz=0;speed=0;vx=0;vy=0;angle=0;bail=0;grace=1;combo=0;multiplier=1;tricks=emptyTrick();features=nearby(x,y);emit();}
+ function travelTo(dest:{x:number;y:number}){surfOk=false;run=idleRun();lift=0;rail=null;kicker=null;back=false;swivel=0;chain=0;x=dest.x;y=dest.y;z=0;vz=0;speed=0;vx=0;vy=0;angle=0;bail=0;grace=1;combo=0;multiplier=1;tricks=emptyTrick();features=nearby(x,y);emit();}
  function nearestSpawn(){let best=LOCATIONS[0],bd=1e18;for(const l of LOCATIONS){const d=(l.x-x)**2+(l.y-y)**2;if(d<bd){bd=d;best=l;}}return best;}
  function respawn(){const best=nearestSpawn();respawns++;respawnName=best.name;travelTo(best);}
  function update(dt:number){if(rp){stepReplay(dt);pub+=dt;if(pub>.05){pub=0;emit();}return;}clock+=dt;{const m=settings.timeMode||'cycle';if(m==='cycle'){hour+=dt/60;if(hour>=19)hour=7;}else hour=FIXED[m];}if(playing){const rx=x,ry=y;jumpCooldown=Math.max(0,jumpCooldown-dt);grace=Math.max(0,grace-dt);bankTime=Math.max(0,bankTime-dt);if(bankTime===0&&z===0){combo=0;multiplier=1;}
@@ -200,7 +200,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  // Nothing glues you to the ground: you follow the surface only while it can hold you. Track how fast the surface under you moves up and down; if it falls away
  // faster than gravity can pull you after it (a crest, a lip, a drop-off), you leave it and fly on your own vertical speed.
  if(z===0&&!rail){const S1=groundHeight(x,y)+lift,vs=dt>0?(S1-surfPrev)/dt:0;
-  if(surfOk&&!kicker&&!back&&!charging&&speed>170&&dt>0&&(vs-vsPrev)/dt<-JUMP.gravity*1.3&&vsPrev>-60){z=1;vz=Math.max(0,vsPrev);tricks=newAir(vz);if(bankTime<=0){combo=0;multiplier=1;}landing='';trick='AIR TIME';absorb=-.2;surfOk=false;}
+  if(surfOk&&Math.abs(S1-surfPrev)<40&&!kicker&&!back&&!charging&&speed>170&&dt>0&&(vs-vsPrev)/dt<-JUMP.gravity*1.3&&vsPrev>-60){z=1;vz=Math.max(0,vsPrev);tricks=newAir(vz);if(bankTime<=0){combo=0;multiplier=1;}landing='';trick='AIR TIME';absorb=-.2;surfOk=false;}
   else{vsPrev=vs;surfPrev=S1;surfOk=true;}}else surfOk=false;
  if(z>0){if(!freezeAir)vz-=JUMP.gravity*(vz<0?JUMP.fall:1)*dt; // a little heavier on the way down than up, so jumps arc and drop naturally
  if(!freezeAir)z+=vz*dt;
@@ -246,7 +246,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  ;raf=requestAnimationFrame(frame);}
  raf=requestAnimationFrame(frame);emit();
  return{startReplay,stopReplay,replaying:()=>!!rp,start(){playing=true;view='game';emit();},pause(){playing=false;rp=null;pushPower=0;tuck=0;pressed.clear();emit();},reset,input,setOutfit(o:Outfit){outfit={...o};},setPeers(p:Peer[]){peers=p;},setView(v:string){view=v;},setSettings(s:GameSettings){settings=s;},// Dev/test only: place the rider at an exact spot, heading and velocity.
- debugPlace(px:number,py:number,a:number,dvx=0,dvy=0){lift=0;rail=null;kicker=null;back=false;tricks=emptyTrick();x=px;y=py;z=0;angle=a;vx=dvx;vy=dvy;speed=Math.hypot(vx,vy);course=speed>1?Math.atan2(vx,vy):a;fakie=vx*Math.sin(a)+vy*Math.cos(a)<0;bail=0;grace=1;features=nearby(x,y);},
+ debugPlace(px:number,py:number,a:number,dvx=0,dvy=0){surfOk=false;lift=0;rail=null;kicker=null;back=false;tricks=emptyTrick();x=px;y=py;z=0;angle=a;vx=dvx;vy=dvy;speed=Math.hypot(vx,vy);course=speed>1?Math.atan2(vx,vy):a;fakie=vx*Math.sin(a)+vy*Math.cos(a)<0;bail=0;grace=1;features=nearby(x,y);},
  debugCourse(){return COURSE;},
  debugKickers(){return PARK_FEATURES.filter(f=>f.kind==='ramp').map(f=>({id:f.id,x:f.x,y:f.y,size:f.size,cls:kickerClass(f).name,lip:kickerShape(f).lip,start:kickerShape(f).start,height:kickerShape(f).height}));},
  debugSetHour(h:number){hour=h;},debugFreeze(on:boolean){freezeAir=on;if(on){vx=0;vy=0;speed=0;}},debugAir(h:number){z=h;vz=0;tricks=newAir(400);},debugGrab(){return{reach:grabReach,idx:grabIdx,quality:tricks.grabQuality,tuck:tricks.tuck};},debugSetGrab(i:number){grabIdx=i%GRABS.length;},debugTrick(){return{spin:tricks.spin,flip:tricks.flip,roll:tricks.roll,peakTilt:tricks.peakTilt,inertia:tricks.inertia,name:trick};},debugOutfit(){return outfit;},debugState(){return{hour,swivel,chain,x,y,z,angle,speed,course,fakie,run:run.state,next:run.next,clock,spin:tricks.spin,bailed:bail>0,lift,rail:!!rail,score,trick,pushPower,tuck,pushPhase};},

@@ -146,7 +146,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  }
  else{box(g,'#8c7652',0,1,0,.07,2,.07);box(g,f.seed%2?'#d89b5d':'#91ae92',.42,1.8,0,.85,.5,.04);}world.add(g);return g;}
  type PoleObj={group:T.Group;shaft:T.Mesh;basket:T.Mesh;tip:T.Mesh;len:number;setLen(l:number):void};
- type Rider={imported:ReturnType<ReturnType<typeof createModelAssets>['rider']>;rig:Rig;hipRestY:number;root:T.Group;stunt:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;kneeL:T.Group;kneeR:T.Group;elbowL:T.Group;elbowR:T.Group;skiL:T.Group;skiR:T.Group;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear'];equipment:T.Object3D[];rag:Rag|null;land:number;airStart:number;wasAir:boolean;edgeSign:number;release:number;boardG:T.Group;bodyY?:number;qs:T.Quaternion;grabW:number;grabErr:number;bikeG:T.Group;bikePivot:T.Group;contact:number;normals:T.Vector3[];torso:T.Group;poles:PoleObj[];pp:PoseOut|null;lastX:number;lastY:number;speedEst:number};
+ type Rider={imported:ReturnType<ReturnType<typeof createModelAssets>['rider']>;rig:Rig;hipRestY:number;root:T.Group;stunt:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;kneeL:T.Group;kneeR:T.Group;elbowL:T.Group;elbowR:T.Group;skiL:T.Group;skiR:T.Group;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear'];equipment:T.Object3D[];rag:Rag|null;land:number;airStart:number;wasAir:boolean;edgeSign:number;release:number;boardG:T.Group;tiltP?:number;tiltR?:number;bodyY?:number;qs:T.Quaternion;grabW:number;grabErr:number;bikeG:T.Group;bikePivot:T.Group;contact:number;normals:T.Vector3[];torso:T.Group;poles:PoleObj[];pp:PoseOut|null;lastX:number;lastY:number;speedEst:number};
  type Rag={start:number;tumble:number;tumbleV:number;yaw:number;yawV:number;h:number;hV:number;seed:number};
  type Debris={obj:T.Object3D;owner:Rider;vel:T.Vector3;spin:T.Vector3};const debris:Debris[]=[];
  const outfitAvatar=(o:Outfit)=>o.avatar||'explorer';
@@ -255,7 +255,12 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const tgt=computePose(inp);r.pp=r.pp?blendPose(r.pp,tgt,Math.min(1,dt*(air?16:11))):tgt;const pp=r.pp;
  // The body is not glued to the snow: on the ground it rides on a damped vertical spring (the legs absorb every bump, the skis follow the real surface), in the air it is free.
  const baseY=ground(p.x,p.y)+(p.z+(p.lift||0))*S;if(first||air||bail>0||r.bodyY===undefined||Math.abs(baseY-r.bodyY)>1.5)r.bodyY=baseY;else r.bodyY+=(baseY-r.bodyY)*(1-Math.exp(-dt*15));
- r.root.position.set(p.x*S,r.bodyY,-p.y*S);r.root.rotation.y=-p.angle;
+ r.root.position.set(p.x*S,r.bodyY,-p.y*S);
+ // The rider is not a flat sprite on the ground plane: on a slope or up a kicker face the whole body leans with the surface (about half to full of its angle), and eases back upright in the air.
+ {let tp=0,tr=0;if(!air&&!(bail>0)){const d=14,fx=Math.sin(p.angle),fy=Math.cos(p.angle),rx=Math.cos(p.angle),ry=-Math.sin(p.angle),sf=(x:number,y:number)=>ground(x,y)+(p.lift||0)*0+featLiftAt(x,y);
+   tp=Math.atan((sf(p.x+fx*d,p.y+fy*d)-sf(p.x-fx*d,p.y-fy*d))/(2*d))*.8;tr=Math.atan((sf(p.x+rx*d,p.y+ry*d)-sf(p.x-rx*d,p.y-ry*d))/(2*d))*.6;}
+  r.tiltP=(r.tiltP||0)+(tp-(r.tiltP||0))*(1-Math.exp(-dt*(air?10:8)));r.tiltR=(r.tiltR||0)+(tr-(r.tiltR||0))*(1-Math.exp(-dt*(air?10:8)));
+  r.root.rotation.order='YXZ';r.root.rotation.set(Math.max(-.7,Math.min(.7,r.tiltP)),-p.angle,Math.max(-.5,Math.min(.5,r.tiltR)));}
  // Flips rotate around the hips, with equipment carried through the motion.
  // The rider's body is a free rigid body in the air (the engine integrates its real orientation); on the ground it eases back to the skiing lean,
  // so there is no snap in or out of a trick. Stumbles wobble it, and butters and manuals tip it nose-down or tail-down.
@@ -341,7 +346,9 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  }
  // EVERYTHING is ground: the skis and boots sit on whatever surface is really under them (snow, a kicker mound, a rail or a box), sampled independently per ski.
  let curFeatures:{kind:string;x:number;y:number;size:number;seed:number;id:string}[]=[];
- function surfAt(x:number,y:number){let add=0;for(const ft of curFeatures){if(ft.kind==='ramp'){const l=kickerSurface(ft as never,x,y);if(l>add)add=l;}else if(ft.kind==='rail'&&Math.abs(ft.x-x)<40&&onRail(ft as never,x,y)){const h=railShape(ft as never).height;if(h>add)add=h;}}return ground(x,y)+add;}
+ // Height (engine units) added by kicker mounds and rails at a point; zero on plain snow.
+ function featLiftAt(x:number,y:number){let add=0;for(const ft of curFeatures){if(ft.kind==='ramp'){const l=kickerSurface(ft as never,x,y);if(l>add)add=l;}else if(ft.kind==='rail'&&Math.abs(ft.x-x)<40&&onRail(ft as never,x,y)){const h=railShape(ft as never).height;if(h>add)add=h;}}return add;}
+ function surfAt(x:number,y:number){let add=0;for(const ft of curFeatures){if(ft.kind==='ramp'){const l=kickerSurface(ft as never,x,y);if(l>add)add=l;}else if(ft.kind==='rail'&&Math.abs(ft.x-x)<40&&onRail(ft as never,x,y)){const h=railShape(ft as never).height;if(h>add)add=h;}}return ground(x,y)+add*S;}
  // Skis/board rest on the snow under each one: pitch with the slope, roll with sidehills and edge angle.
  // The terrain normal is sampled across the ski's length (smooths small bumps) and low-passed over time.
  // In the air the gear follows the rider's pose; contact blends back in after landing.
