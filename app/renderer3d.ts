@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {createModelAssets} from './model-assets';
+import {createEnvironment} from './environment';
 import {kitById} from './kits';
 import {kickerShape,kickerSurface,kickerBack,railShape,onRail} from './park';
 import {COURSE} from './race';
@@ -18,7 +19,7 @@ const VERT=6;
 const ground=(x:number,y:number)=>groundHeight(x,y)*S*VERT;
 export function createMountain3D(canvas:HTMLCanvasElement){
  const renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance'});
- renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor('#accbd2');
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1;renderer.setClearColor('#accbd2');
  let assetRevision=0,seenAssetRevision=0;const models=createModelAssets(()=>assetRevision++);
  // Daylight by hour (7:00 and 19:00 match, so the cycle loops without a jump): warm low sun at the ends, bright white at midday, gold in the afternoon.
  const KEYS:{h:number;sky:string;hemi:string;hemiI:number;sun:string;sunI:number}[]=[
@@ -30,11 +31,11 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   LIGHT.sky.copy(cA.set(a.sky).lerp(cB.set(b.sky),u));LIGHT.hemiSky.copy(cA.set(a.hemi).lerp(cB.set(b.hemi),u));LIGHT.sun.copy(cA.set(a.sun).lerp(cB.set(b.sun),u));
   LIGHT.hemi=a.hemiI+(b.hemiI-a.hemiI)*u;LIGHT.sunI=a.sunI+(b.sunI-a.sunI)*u;const t=(h-7)/12;LIGHT.dx=Math.cos(Math.PI*(1-t))*45;LIGHT.dy=14+34*Math.sin(Math.PI*t);return LIGHT;}
  const scene=new T.Scene();scene.fog=new T.Fog('#accbd2',200,1300);
- const camera=new T.PerspectiveCamera(57,1,.1,3200);
+ const camera=new T.PerspectiveCamera(57,1,.1,3200);const envMap=createEnvironment(renderer,scene);
  const hemi=new T.HemisphereLight('#e9faff','#8aa3b9',2.2);scene.add(hemi);
  const sun=new T.DirectionalLight('#ffe9b9',2.5);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-35;sun.shadow.camera.right=35;sun.shadow.camera.top=35;sun.shadow.camera.bottom=-35;sun.shadow.camera.far=120;sun.shadow.bias=-.001;scene.add(sun,sun.target);
  const materials=new Map<string,T.MeshStandardMaterial>();
- function mat(c:string){if(!materials.has(c))materials.set(c,new T.MeshStandardMaterial({color:c,roughness:1,flatShading:true}));return materials.get(c)!;}
+ function mat(c:string){if(!materials.has(c))materials.set(c,new T.MeshStandardMaterial({color:c,roughness:.82,flatShading:false}));return materials.get(c)!;}
  const boxGeo=new T.BoxGeometry(1,1,1),coneGeo=new T.ConeGeometry(1,1,7),sphereGeo=new T.IcosahedronGeometry(1,0);
  function mesh(g:T.BufferGeometry,c:string,parent:T.Object3D,pos:number[],scale:number[]){const m=new T.Mesh(g,mat(c));m.position.set(pos[0],pos[1],pos[2]);m.scale.set(scale[0],scale[1],scale[2]);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
  function box(p:T.Object3D,c:string,x:number,y:number,z:number,w:number,h:number,d:number){return mesh(boxGeo,c,p,[x,y,z],[w,h,d]);}
@@ -49,6 +50,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
 
  // ---- Snow: soft smooth-shaded ground with fine noise, sastrugi streaks, bluer hollows and a micro-relief bump texture that catches the sun. ----
  const vn=(x:number,y:number)=>{const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),h=(a:number,b:number)=>hash(a*127+b*311+17);return (h(ix,iy)*(1-sx)+h(ix+1,iy)*sx)*(1-sy)+(h(ix,iy+1)*(1-sx)+h(ix+1,iy+1)*sx)*sy;};
+ const snowTex=(()=>{const L=new T.TextureLoader(),set=(t:T.Texture,srgb:boolean)=>{t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(46,14);t.anisotropy=8;if(srgb)t.colorSpace=T.SRGBColorSpace;return t;};return{diff:set(L.load('/tex/snow_02_diff.jpg'),true),nor:set(L.load('/tex/snow_02_nor_gl.jpg'),false),rough:set(L.load('/tex/snow_02_rough.jpg'),false)};})();
  const snowBump=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d')!,im=g.createImageData(256,256);
   for(let j=0;j<256;j++)for(let i=0;i<256;i++){const v=.5*vn(i/16,j/16)+.3*vn(i/6,j/6)+.2*vn(i/2.2,j/2.2),sp=hash(i*13+j*57)>.985?.35:0,k=Math.max(0,Math.min(255,(v+sp)*255)),o=(j*256+i)*4;im.data[o]=im.data[o+1]=im.data[o+2]=k;im.data[o+3]=255;}
   g.putImageData(im,0,0);const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(110,34);t.anisotropy=4;return t;})();
@@ -103,7 +105,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   {const k=1+.035*(vn(xx*.012,yy*.0035)-.5)+.03*(vn(xx*.05,yy*.012)-.5)+.02*(vn(xx*.2,yy*.05)-.5),cv=(ground(xx+40,yy)+ground(xx-40,yy)+ground(xx,yy+40)+ground(xx,yy-40))/4-h;
    _c.multiplyScalar(k);if(cv>0)_c.lerp(SNOW_SHADE,Math.min(.3,cv*4.5));else _c.lerp(SNOW_WARM,Math.min(.1,-cv*2.5));}
   cs.push(_c.r,_c.g,_c.b);}
- geo.setAttribute('color',new T.Float32BufferAttribute(cs,3));geo.computeVertexNormals();const terrain=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,roughness:.62,metalness:0,bumpMap:snowBump,bumpScale:1.4}));terrain.receiveShadow=true;group.add(terrain);
+ geo.setAttribute('color',new T.Float32BufferAttribute(cs,3));geo.computeVertexNormals();const terrain=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,roughness:1,metalness:0,normalMap:snowTex.nor,normalScale:new T.Vector2(.7,.7),roughnessMap:snowTex.rough,envMapIntensity:.8}));terrain.receiveShadow=true;group.add(terrain);
  const rel=(x:number,y:number,x0:number,y0:number)=>ground(x,y)-ground(x0,y0);
  for(const lm of LANDMARKS){if(Math.floor(lm.y/1000)!==chunk)continue;const g=new T.Group();g.position.set(lm.x*S,ground(lm.x,lm.y),-lm.y*S);
   if(lm.kind==='village'||lm.kind==='lodge'){
@@ -482,12 +484,12 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   const dist=Math.max(2,rcPos.distanceTo(R)),fv=mode==='chase'?56:mode==='orbit'?50:Math.max(16,Math.min(52,2*Math.atan(2.7/dist)*180/Math.PI));camera.fov=fv;camera.updateProjectionMatrix();}
  if(wardrobe){if(!camera.view?.enabled||camera.view.fullWidth!==w||camera.view.fullHeight!==h)camera.setViewOffset(w,h,-w*.23,0,w,h);}else if(camera.view?.enabled)camera.clearViewOffset();
  const quality=f.settings.quality==='high';renderer.shadowMap.enabled=quality;const pixelRatio=quality?Math.min(window.devicePixelRatio,1.5):.8;if(renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio);
- {const L=light(f.hour??12);scene.fog!.color.copy(L.sky);renderer.setClearColor(L.sky);hemi.color.copy(L.hemiSky);hemi.intensity=L.hemi;sun.color.copy(L.sun);sun.intensity=L.sunI;sun.position.set(f.x*S+L.dx,py+L.dy,-f.y*S+15);}sun.target.position.set(f.x*S,py,-f.y*S-15);
+ {const L=light(f.hour??12),sk=envMap.apply(f.hour??12);scene.fog!.color.copy(sk?cA.set(sk.fog):L.sky);renderer.setClearColor(L.sky);hemi.color.copy(L.hemiSky);hemi.intensity=sk?L.hemi*.3:L.hemi;sun.color.copy(L.sun);sun.intensity=L.sunI;sun.position.set(f.x*S+L.dx,py+L.dy,-f.y*S+15);}sun.target.position.set(f.x*S,py,-f.y*S-15);
  updateStreaks(f);updateSpray(f,fdt);
  for(const [n,c] of crowds){if(Math.abs((n+.5)*1000-f.y)<1900)animateCrowd(c,f.clock,f.y);}
  // Chairs: position depends only on the clock, so they keep moving at the same slow pace everywhere. Only chairs near the camera are shown.
  {const t=f.clock;for(const c of chairs){const L=c.L,len=L.y0-L.y1,s=((c.i/c.n)*len+(c.up?1:-1)*t*CHAIR_SPEED+len*10)%len,yy=c.up?L.y1+s:L.y1+(len-s),k=(L.y0-yy)/len,xl=L.x0+(L.x1-L.x0)*k+(c.up?-16:16);
    if(Math.abs(yy-f.y)>1700||wardrobe){c.g.visible=false;continue;}c.g.visible=true;c.g.position.set(xl*S,ground(xl,yy)+8.4,-yy*S);c.g.rotation.y=c.up?0:Math.PI;c.g.rotation.z=Math.sin(t*.8+c.i)*.03;}}
  renderer.render(scene,camera);return{grabErr:local.grabErr};}
- return{draw,destroy(){models.dispose();renderer.dispose();scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();if(o instanceof T.Sprite){o.material.map?.dispose();o.material.dispose();}});materials.forEach(m=>m.dispose());}};
+ return{draw,destroy(){models.dispose();envMap.dispose();renderer.dispose();scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();if(o instanceof T.Sprite){o.material.map?.dispose();o.material.dispose();}});materials.forEach(m=>m.dispose());}};
 }
