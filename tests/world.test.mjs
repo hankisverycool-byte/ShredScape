@@ -25,7 +25,7 @@ test('the main run is nearly straight, wall to wall between the barriers',()=>{
 });
 test('forest and crowd stands are behind the barriers, never on the course',()=>{
  for(const [x,y] of [[0,5000],[0,12000],[300,3000]])for(const f of featuresNear(x,y))if(f.kind==='tree'||f.kind==='rock')assert.ok(Math.abs(f.x)>BARRIER_X+100,'obstacle at '+Math.round(f.x)+','+Math.round(f.y));
- assert.ok(groundHeight(BARRIER_X+400,6000)>groundHeight(BARRIER_X,6000)+30,'stands rise behind the barrier');
+ assert.ok(groundHeight(BARRIER_X+400,6000)>groundHeight(BARRIER_X,6000)+8&&groundHeight(BARRIER_X+400,6000)<groundHeight(BARRIER_X,6000)+14,'low stands behind the barrier, no big wall');
 });
 test('every trail has sensible length and slope and stays in the world',()=>{
  for(const t of TRAILS){const a=t.pts[0][0],b=t.pts.at(-1)[0];assert.ok(b-a>=1000,t.name+' length');

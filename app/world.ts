@@ -46,7 +46,7 @@ function raw(x:number,y:number){
  for(const p of PEAKS)h+=p.h*Math.exp(-((x-p.x)**2/(2*p.sx*p.sx)+(y-p.y)**2/(2*p.sy*p.sy)));
  const calm=(1-.85*parkInfluence(x,y))*(1-smooth(.8,.9,t)); // rolling relief, quiet in parks and flat in the valley
  h+=calm*(1.5*Math.sin(x*.0014+y*.0008)+.5*Math.sin(x*.003-y*.0016+1.3));
- return h+Math.max(0,Math.abs(x)-BARRIER_X-20)*.18; // the stands rise gently behind the barriers
+ return h+Math.min(12,Math.max(0,Math.abs(x)-BARRIER_X-20)*.09); // low stands behind the barriers, then open flat ground out to the distant mountains
 }
 // ---------- places ----------
 export type Location={id:string;name:string;x:number;y:number;color:string;kind:'summit'|'park'|'town'|'lake'|'bowl';description:string};

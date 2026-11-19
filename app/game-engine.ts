@@ -21,7 +21,7 @@ function nearby(x:number,y:number):Feature[]{const out=featuresNear(x,y);for(con
 export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>void){
  const mountain=createMountain3D(canvas);let outfit:Outfit={jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear:'snowboard'};
  let x=START.x,y=START.y,z=0,vz=0,vx=0,vy=0,course=0,fakie=false,lift=0,rail:Feature|null=null,kicker:Feature|null=null,edge=0,skid=0,absorb=0,backseat=0,snow:Snow='groomed',speed=0,angle=0,score=0,best=0,combo=0,multiplier=1,clock=0,bail=0,grace=1,totalDistance=0,creditsEarned=0;
- const STEP=1/120;let barrierHit=false,acc=0,grabReach=.1,freezeAir=false;
+ const STEP=1/120;let surfPrev=0,vsPrev=0,surfOk=false,barrierHit=false,acc=0,grabReach=.1,freezeAir=false;
  let respawns=0,respawnName='',peakAir=0,crossAmt=0,scissorAmt=0,lastSpeedFeat=-9,hour=9,swivel=0,lastRailEnd=-99,chain=0,charge=0,charging=false,back=false,playing=false,destroyed=false,raf=0,last=performance.now(),pub=0,featureTime=0,jumpCooldown=0,bankTime=0,pushPhase=0,pushPower=0,tuck=0;
  let trick='Choose your own line.',landing='',view='start',settings:GameSettings={quality:'high',fov:65,sensitivity:1,cameraDistance:10};
  // Time of day: one game hour per real minute from 7:00 to 19:00, then it wraps (dusk and dawn light match, so the loop is seamless). Snow warms up and goes soft from about 11:00 to 16:00.
@@ -197,6 +197,11 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
   else if(speed>45&&Math.abs(Math.cos(course))>.5){const pad=Math.max(5,speed*dt*1.3),r=features.find(f=>f.kind==='rail'&&onRail(f,x,y,pad));if(r){rail=r;tricks=emptyTrick();combo=0;multiplier=1;landing='';grace=1;linkIn();}}
   }
  }
+ // Nothing glues you to the ground: you follow the surface only while it can hold you. Track how fast the surface under you moves up and down; if it falls away
+ // faster than gravity can pull you after it (a crest, a lip, a drop-off), you leave it and fly on your own vertical speed.
+ if(z===0&&!rail){const S1=groundHeight(x,y)+lift,vs=dt>0?(S1-surfPrev)/dt:0;
+  if(surfOk&&!kicker&&!back&&!charging&&speed>170&&dt>0&&(vs-vsPrev)/dt<-JUMP.gravity*1.3&&vsPrev>-60){z=1;vz=Math.max(0,vsPrev);tricks=newAir(vz);if(bankTime<=0){combo=0;multiplier=1;}landing='';trick='AIR TIME';absorb=-.2;surfOk=false;}
+  else{vsPrev=vs;surfPrev=S1;surfOk=true;}}else surfOk=false;
  if(z>0){if(!freezeAir)vz-=JUMP.gravity*(vz<0?JUMP.fall:1)*dt; // a little heavier on the way down than up, so jumps arc and drop naturally
  if(!freezeAir)z+=vz*dt;
   const flipIn=Number(pressed.has('down'))-Number(pressed.has('up')),rollIn=Number(pressed.has('rollL'))-Number(pressed.has('rollR')),grabbing=pressed.has('grab'),anyInput=!!(steer||flipIn||rollIn);
