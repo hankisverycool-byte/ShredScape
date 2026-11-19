@@ -21,7 +21,7 @@ function nearby(x:number,y:number):Feature[]{const out=featuresNear(x,y);for(con
 export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>void){
  const mountain=createMountain3D(canvas);let outfit:Outfit={jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear:'snowboard'};
  let x=START.x,y=START.y,z=0,vz=0,vx=0,vy=0,course=0,fakie=false,lift=0,rail:Feature|null=null,kicker:Feature|null=null,edge=0,skid=0,absorb=0,backseat=0,snow:Snow='groomed',speed=0,angle=0,score=0,best=0,combo=0,multiplier=1,clock=0,bail=0,grace=1,totalDistance=0,creditsEarned=0;
- const STEP=1/120;let acc=0,grabReach=.1,freezeAir=false;
+ const STEP=1/120;let barrierHit=false,acc=0,grabReach=.1,freezeAir=false;
  let respawns=0,respawnName='',peakAir=0,crossAmt=0,scissorAmt=0,lastSpeedFeat=-9,hour=9,swivel=0,lastRailEnd=-99,chain=0,charge=0,charging=false,back=false,playing=false,destroyed=false,raf=0,last=performance.now(),pub=0,featureTime=0,jumpCooldown=0,bankTime=0,pushPhase=0,pushPower=0,tuck=0;
  let trick='Choose your own line.',landing='',view='start',settings:GameSettings={quality:'high',fov:65,sensitivity:1,cameraDistance:10};
  // Time of day: one game hour per real minute from 7:00 to 19:00, then it wraps (dusk and dawn light match, so the loop is seamless). Snow warms up and goes soft from about 11:00 to 16:00.
@@ -180,7 +180,9 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  crossAmt+=((z>0?Math.max(pressed.has('crossL')?1:0,pressed.has('grab')?GRABS[grabIdx].cross:0):0)-crossAmt)*Math.min(1,dt*14);scissorAmt+=((z>0&&pressed.has('crossR')?1:0)-scissorAmt)*Math.min(1,dt*14);
  if(charging){if(z>0||bail)charging=false;else charge=Math.min(1,charge+dt/CHARGE.time);absorb=Math.max(absorb,.25+.65*charge);}else charge=0;
  const before={x,y};const next={x:x+vx*dt,y:y+vy*dt};x=Math.max(BOUNDS.minX,Math.min(BOUNDS.maxX,next.x));y=Math.max(BOUNDS.minY,Math.min(BOUNDS.maxY,next.y));totalDistance+=Math.hypot(x-before.x,y-before.y);
- if(x!==next.x||y!==next.y){vx=0;vy=0;speed=0;trick='Mountain boundary · turn around or open the map';}
+ if(x!==next.x){ // the padded barrier: you bounce off it and scrub speed
+  vx=-vx*.3;vy*=.82;speed=Math.hypot(vx,vy);absorb=Math.max(absorb,.6);if(!barrierHit){barrierHit=true;spray(8);if(z===0)trick='Barrier · the crowd gasps';}}else barrierHit=false;
+ if(y!==next.y){vx=0;vy=0;speed=0;trick='End of the course · turn around or open the map';}
  if(z===0&&!rail){
   // Kicker: ride up the snow face, launch off the lip with speed.
   if(back&&kicker){const l=kickerSurface(kicker,x,y);if(l>0)lift=l;else{lift=0;kicker=null;back=false;}} // riding down the back of a mound you landed on

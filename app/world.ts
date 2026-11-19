@@ -1,9 +1,12 @@
 import {KICKER_CLASSES,KICKER} from './park';
-// The world: one long, narrow mountain in the spirit of Aspen. A wide main run (Spar Gulch) winds down the spine from the summit to the town,
-// with steep walls either side. The terrain parks sit on detours: side runs that peel off the main run, pass through a park, and rejoin
-// it further down. Aspen-inspired, not a survey. Units are engine units; 1 unit = SCALE world units.
+// The world: one straight run. A wide groomed course drops from the summit to the town in a nearly straight line, and the sections (the summit chute,
+// Buttermilk Park, Highlands Big Air, Snowmass Park, the Ajax Rail Yard and the town) follow each other back to back. Padded barriers line both sides
+// with the crowd standing behind them. Aspen-inspired, not a survey. Units are engine units; 1 unit = SCALE world units.
 export const SCALE=.05;
-export const BOUNDS={minX:-1500,maxX:1500,minY:-1000,maxY:14000};
+export const BARRIER_X=640; // the barriers: the course is 1280 wide
+export const BOUNDS={minX:-BARRIER_X,maxX:BARRIER_X,minY:-1000,maxY:17700};
+export const WORLD_X=1500; // terrain, crowd and forest extend this far either side
+export const SECTIONS=[{id:'chute',name:'Summit Chute',y0:-400,y1:2500},{id:'butter-park',name:'Buttermilk Park',y0:2800,y1:5600},{id:'big-air',name:'Highlands Big Air',y0:5900,y1:10700},{id:'snowmass-park',name:'Snowmass Park',y0:10900,y1:14100},{id:'rail-yard',name:'Ajax Rail Yard',y0:14300,y1:16100},{id:'aspen-town',name:'Aspen Town',y0:16300,y1:17700}];
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const smooth=(a:number,b:number,x:number)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
 const hash=(n:number)=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
@@ -11,13 +14,12 @@ const hash=(n:number)=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math
 // ---------- zones ----------
 export type Zone={id:string;name:string;kind:'park'|'bowl'|'town'|'lake';x0:number;y0:number;x1:number;y1:number;color:string;desc:string};
 export const ZONES:Zone[]=[
- {id:'butter-park',name:'Buttermilk Park',kind:'park',x0:-1330,y0:3300,x1:-600,y1:6300,color:'#7cc97a',desc:'West detour: the learning park, with minis and smalls, boxes and rails, and a large to graduate on.'},
- {id:'snowmass-park',name:'Snowmass Park',kind:'park',x0:-1330,y0:7000,x1:-550,y1:10300,color:'#e6c24a',desc:'West detour: mediums and larges, a long rail garden, and a huge at the end of the right line.'},
- {id:'big-air',name:'Highlands Big Air',kind:'park',x0:250,y0:3800,x1:1150,y1:8700,color:'#8a4bd1',desc:'East detour: two big-air lines from mini to GIGANTIC. Bring speed.'},
- {id:'rail-yard',name:'Ajax Rail Yard',kind:'park',x0:450,y0:9300,x1:1100,y1:11200,color:'#5fb8d9',desc:'East detour: rails and boxes, with a few mini kickers.'},
- {id:'aspen-town',name:'Aspen Town',kind:'town',x0:-450,y0:12300,x1:450,y1:13500,color:'#ed9a6c',desc:'The base village, the gondola and the Core Rail Jam in the plaza.'},
- {id:'highland-bowl',name:'Highland Bowl',kind:'bowl',x0:250,y0:-400,x1:1100,y1:2200,color:'#d5e5df',desc:'Steep, wide-open alpine bowl above the trees. Ungroomed.'},
- {id:'big-burn',name:'The Big Burn',kind:'bowl',x0:-1350,y0:1000,x1:-500,y1:3000,color:'#a5bb87',desc:'Huge open slopes with scattered glades.'},
+ {id:'chute',name:'Summit Chute',kind:'bowl',x0:-BARRIER_X,y0:-400,x1:BARRIER_X,y1:2500,color:'#d5e5df',desc:'The steep top section and the timed GS course. Open and fast.'},
+ {id:'butter-park',name:'Buttermilk Park',kind:'park',x0:-BARRIER_X,y0:2800,x1:BARRIER_X,y1:5600,color:'#7cc97a',desc:'The learning park: minis and smalls, boxes and rails, and a large to graduate on.'},
+ {id:'big-air',name:'Highlands Big Air',kind:'park',x0:-BARRIER_X,y0:5900,x1:BARRIER_X,y1:10700,color:'#8a4bd1',desc:'Two big-air lines from mini to GIGANTIC. Bring speed.'},
+ {id:'snowmass-park',name:'Snowmass Park',kind:'park',x0:-BARRIER_X,y0:10900,x1:BARRIER_X,y1:14100,color:'#e6c24a',desc:'Mediums and larges, a long rail garden, and a huge at the end of the right line.'},
+ {id:'rail-yard',name:'Ajax Rail Yard',kind:'park',x0:-BARRIER_X,y0:14300,x1:BARRIER_X,y1:16100,color:'#5fb8d9',desc:'Rails and boxes, with a few mini kickers.'},
+ {id:'aspen-town',name:'Aspen Town',kind:'town',x0:-BARRIER_X,y0:16300,x1:BARRIER_X,y1:17700,color:'#ed9a6c',desc:'The base village, the gondola and the Core Rail Jam in the plaza.'},
 ];
 const rectDist=(z:Zone,x:number,y:number)=>Math.hypot(Math.max(z.x0-x,0,x-z.x1),Math.max(z.y0-y,0,y-z.y1));
 const PARKS=ZONES.filter(z=>z.kind==='park');
@@ -30,7 +32,7 @@ export const MOUNTAINS=[
 ];
 export const mountainAt=(x:number)=>MOUNTAINS.find(m=>x<m.x1)||MOUNTAINS[MOUNTAINS.length-1];
 // ---------- terrain ----------
-const L0=-1000,L1=14000,DROP=330;
+const L0=-1000,L1=17700,DROP=430;
 // Fall line: steep for the top two thirds, easing to a gentle valley floor (Hermite curve, slope 1.3 -> .12).
 const fallCurve=(t:number)=>1.3*(t*t*t-2*t*t+t)+(-2*t*t*t+3*t*t)+.12*(t*t*t-t*t);
 const RIDGES:{x:number;h:number;s:number}[]=[];
@@ -44,20 +46,17 @@ function raw(x:number,y:number){
  for(const p of PEAKS)h+=p.h*Math.exp(-((x-p.x)**2/(2*p.sx*p.sx)+(y-p.y)**2/(2*p.sy*p.sy)));
  const calm=(1-.85*parkInfluence(x,y))*(1-smooth(.8,.9,t)); // rolling relief, quiet in parks and flat in the valley
  h+=calm*(1.5*Math.sin(x*.0014+y*.0008)+.5*Math.sin(x*.003-y*.0016+1.3));
- return h+Math.max(0,Math.abs(x)-1000)*.32; // steep walls close the mountain in on both sides
+ return h+Math.max(0,Math.abs(x)-BARRIER_X-20)*.18; // the stands rise gently behind the barriers
 }
 // ---------- places ----------
 export type Location={id:string;name:string;x:number;y:number;color:string;kind:'summit'|'park'|'town'|'lake'|'bowl';description:string};
 export const LOCATIONS:Location[]=[
- {id:'ajax',name:'Summit',x:0,y:350,color:'#d5e5df',kind:'summit',description:'Top of the Silver Queen Gondola. Steep, fast, and the start of Spar Gulch.'},
- {id:'highland-bowl',name:'Highland Bowl',x:700,y:700,color:'#84bdcf',kind:'bowl',description:'Steep, wide-open alpine bowl above the trees.'},
- {id:'big-burn',name:'The Big Burn',x:-900,y:1700,color:'#a5bb87',kind:'bowl',description:'Huge open slopes and glades.'},
- {id:'butter-park',name:'Buttermilk Park',x:-965,y:3560,color:'#7cc97a',kind:'park',description:'West detour. Minis and smalls to learn on, a rail line, and a large at the end.'},
- {id:'big-air',name:'Highlands Big Air',x:685,y:4060,color:'#8a4bd1',kind:'park',description:'East detour. Mini to GIGANTIC, two lines, built for speed.'},
- {id:'mid',name:'Mid Mountain',x:0,y:6000,color:'#e6c88b',kind:'summit',description:'The middle of Spar Gulch, with the detours on both sides.'},
- {id:'snowmass-park',name:'Snowmass Park',x:-965,y:7260,color:'#e6c24a',kind:'park',description:'West detour. Mediums and larges, and the long rail garden.'},
- {id:'rail-yard',name:'Ajax Rail Yard',x:775,y:9360,color:'#5fb8d9',kind:'park',description:'East detour. Rails, boxes and mini kickers.'},
- {id:'town',name:'Aspen Town',x:0,y:12650,color:'#ed9a6c',kind:'town',description:'Gondola base, plaza, and the Core Rail Jam.'},
+ {id:'ajax',name:'Summit',x:0,y:350,color:'#d5e5df',kind:'summit',description:'Top of the Silver Queen Gondola. Steep, fast, and the start of the run.'},
+ {id:'butter-park',name:'Buttermilk Park',x:0,y:2880,color:'#7cc97a',kind:'park',description:'Section 2. Minis and smalls to learn on, a rail line, and a large at the end.'},
+ {id:'big-air',name:'Highlands Big Air',x:0,y:6000,color:'#8a4bd1',kind:'park',description:'Section 3. Mini to GIGANTIC, two lines, built for speed.'},
+ {id:'snowmass-park',name:'Snowmass Park',x:0,y:11000,color:'#e6c24a',kind:'park',description:'Section 4. Mediums and larges, and the long rail garden.'},
+ {id:'rail-yard',name:'Ajax Rail Yard',x:0,y:14400,color:'#5fb8d9',kind:'park',description:'Section 5. Rails, boxes and mini kickers.'},
+ {id:'town',name:'Aspen Town',x:0,y:16450,color:'#ed9a6c',kind:'town',description:'The finish: gondola base, plaza, and the Core Rail Jam.'},
 ];
 export const START={x:0,y:350};
 // Flat pads so every arrival point is a place you can stand still.
@@ -74,17 +73,8 @@ export function regionAt(x:number,y:number){const z=zoneAt(x,y);return z?z.name:
 // A trail is a centre line x(y) through [y,x] knots. Groomed snow lies within w/2 of it.
 export type Trail={id:string;name:string;level:'green'|'blue'|'black';w:number;pts:[number,number][]};
 export const TRAILS:Trail[]=[
- // The main run, straight down the spine.
- {id:'spar-gulch',name:'Spar Gulch',level:'blue',w:520,pts:[[-100,0],[1200,120],[2400,-100],[3600,60],[4800,-120],[6000,100],[7200,-80],[8400,60],[9600,-60],[10800,40],[12000,0],[13200,0]]},
- {id:'golden-horn',name:'Golden Horn',level:'blue',w:440,pts:[[-100,520],[1000,560],[2200,420],[3200,300],[3900,150]]},
- {id:'copper-bowl',name:'Copper Bowl',level:'black',w:340,pts:[[600,-520],[1500,-480],[2600,-420],[3300,-250],[3700,-80]]},
- {id:'exhibition',name:'Exhibition',level:'black',w:320,pts:[[400,520],[1200,640],[2000,700]]},
- // Detours: each leaves the main run, passes through a park, and rejoins it.
- {id:'buttermilk-run',name:'Buttermilk Run',level:'green',w:520,pts:[[3100,40],[3500,-250],[3900,-780],[4400,-960],[5200,-960],[6000,-960],[6500,-780],[6900,-300],[7200,-60]]},
- {id:'snowmass-run',name:'Snowmass Run',level:'blue',w:480,pts:[[7400,-60],[7700,-350],[8000,-800],[8500,-940],[9500,-940],[10300,-900],[10700,-500],[11000,-100],[11400,0]]},
- {id:'highlands-run',name:'Highlands Run',level:'blue',w:520,pts:[[3300,60],[3600,300],[3900,600],[4400,700],[6000,700],[8000,700],[8700,550],[9000,250],[9300,60]]},
- {id:'yard-run',name:'Ajax Run',level:'blue',w:460,pts:[[9500,60],[9700,350],[10000,700],[10500,775],[11000,700],[11400,300],[11700,20]]},
- {id:'little-nell',name:'Little Nell',level:'green',w:700,pts:[[11400,0],[12200,0],[13000,0],[13500,0]]},
+ // One wide groomed run, almost dead straight, wall to wall between the barriers.
+ {id:'spar-gulch',name:'Main Run',level:'blue',w:1300,pts:[[-100,0],[1500,30],[3000,-25],[5000,25],[7000,-30],[9000,25],[11000,-25],[13000,20],[15000,-20],[17000,0],[17800,0]]},
 ];
 export const trailById=(id:string)=>TRAILS.find(t=>t.id===id)!;
 // Catmull-Rom through the knots. null outside the trail's length.
@@ -94,7 +84,7 @@ export function trailX(tr:Trail,y:number):number|null{
  const p0=p[Math.max(0,i-1)][1],p1=p[i][1],p2=p[i+1][1],p3=p[Math.min(n-1,i+2)][1],u=(y-p[i][0])/(p[i+1][0]-p[i][0]);
  return .5*((2*p1)+(-p0+p2)*u+(2*p0-5*p1+4*p2-p3)*u*u+(-p0+3*p1-3*p2+p3)*u*u*u);
 }
-const VALLEY_Y=11900;
+const VALLEY_Y=16300;
 // Groomed: on a trail, inside a park or the town, or on the valley floor that links the bases.
 export function onTrail(x:number,y:number){
  if(y>VALLEY_Y)return true;
@@ -108,25 +98,23 @@ export function snowAt(x:number,y:number):'groomed'|'powder'|'ice'{return onTrai
 // ---------- landmarks and lifts ----------
 export type Landmark={kind:'village'|'lodge'|'parkgate'|'lake';x:number;y:number;name:string;count?:number;r?:number};
 export const LANDMARKS:Landmark[]=[
- {kind:'village',x:0,y:13550,name:'ASPEN',count:16},{kind:'village',x:-950,y:13300,name:'SNOWMASS VILLAGE',count:9},{kind:'village',x:950,y:13300,name:'HIGHLANDS BASE',count:4},
- {kind:'lodge',x:250,y:430,name:'SUNDECK'},{kind:'lodge',x:700,y:560,name:'CLOUD NINE'},{kind:'lodge',x:-700,y:1590,name:'ELK CAMP'},{kind:'lodge',x:-250,y:2400,name:'SUMMIT HUT'},
+ {kind:'village',x:0,y:17420,name:'ASPEN',count:16},{kind:'village',x:-1050,y:16700,name:'SNOWMASS VILLAGE',count:9},{kind:'village',x:1050,y:16700,name:'HIGHLANDS BASE',count:4},
+ {kind:'lodge',x:850,y:430,name:'SUNDECK'},{kind:'lodge',x:-850,y:1500,name:'ELK CAMP'},
  ...PARKS.map(z=>({kind:'parkgate' as const,x:(z.x0+z.x1)/2,y:z.y0+30,name:z.name.toUpperCase(),r:(z.x1-z.x0)/2})),
 ];
 export type Lift={id:string;name:string;x0:number;y0:number;x1:number;y1:number};
-export const LIFTS:Lift[]=[ // bottom -> top
- {id:'silver-queen',name:'Silver Queen Gondola',x0:330,y0:13000,x1:250,y1:520},
- {id:'loge-peak',name:'Loge Peak Express',x0:-330,y0:12900,x1:-250,y1:700},
+export const LIFTS:Lift[]=[ // bottom -> top, outside the crowd on either side
+ {id:'silver-queen',name:'Silver Queen Gondola',x0:1000,y0:16900,x1:1000,y1:520},
+ {id:'loge-peak',name:'Loge Peak Express',x0:-1000,y0:16800,x1:-1000,y1:700},
 ];
 
 // ---------- trees, rocks and park features ----------
 export type Feature={kind:'tree'|'rock'|'ramp'|'rail'|'flag'|'gate'|'start'|'finish';x:number;y:number;size:number;seed:number;id:string};
 // Forest density 0..1: none above the treeline and in the bowls, thickest low down, in patches, thin in the Big Burn glades.
 export function forestAt(x:number,y:number){
- const z=zoneAt(x,y);if(z&&z.kind==='bowl'&&z.id==='highland-bowl')return 0;
- const alt=smooth(2000,3000,y),n=.5+.5*Math.sin(x*.0017+y*.0009)*Math.sin(x*.0011-y*.0014+2);
- // Glades: long, winding open lanes through the forest with just a few scattered trees, running downhill like tree runs.
- const lane=Math.sin(x*.0046+Math.sin(y*.0013)*2.2+Math.sin(y*.0004)*3),glade=smooth(.35,.7,lane);
- return Math.min(1,alt*(.62+.55*n)*(1-.8*glade)*(z&&z.id==='big-burn'?.25:1)*(1-smooth(9000,9400,y)));
+ if(Math.abs(x)<BARRIER_X+170)return 0; // the course and the crowd stands are clear
+ const alt=smooth(1500,2600,y),n=.5+.5*Math.sin(x*.0017+y*.0009)*Math.sin(x*.0011-y*.0014+2);
+ return Math.min(1,alt*(.7+.5*n)*(1-smooth(16400,16900,y)));
 }
 const nearLandmark=(x:number,y:number)=>LANDMARKS.some(l=>(l.kind==='village'||l.kind==='lodge')&&Math.hypot(x-l.x,y-l.y)<(l.kind==='village'?380:130));
 export const PARK_FEATURES:Feature[]=[];
@@ -134,29 +122,29 @@ function kickerLine(park:string,x:number,y0:number,classes:number[]){let y=y0;cl
 // items: [size, isBox]. A box is lower and wider; a rail is longer and thinner.
 function railLine(park:string,x:number,y0:number,items:[number,boolean][],gap:number){let y=y0;items.forEach(([size,box],i)=>{const len=(box?140:170)*size;PARK_FEATURES.push({kind:'rail',x,y:y+len/2,size,seed:i*2+(box?1:0),id:`${park}:r${x}:${i}`});y+=len+gap;});}
 // Buttermilk Park: a gentle progression. Left: minis -> smalls -> medium. Middle: boxes then rails. Right: small -> mediums -> large.
-kickerLine('butter',-1200,3500,[0,0,1,1,2]);kickerLine('butter',-850,3550,[1,2,2,3]);
-railLine('butter',-1025,3650,[[.6,true],[.8,true],[1,false],[1.1,true],[1.4,false],[1.4,true],[1.8,false],[1.2,true]],110);
-// Snowmass Park: bigger. Left: small -> medium -> large -> medium. Middle: rail garden. Right: medium -> large -> huge.
-kickerLine('snow',-1200,7200,[1,2,3,2]);kickerLine('snow',-750,7250,[2,3,4]);
-railLine('snow',-975,7350,[[1.2,false],[1,true],[1.6,false],[1.4,true],[2,false],[1,true],[1.8,false]],120);
+kickerLine('butter',-380,2950,[0,0,1,1,2]);kickerLine('butter',160,3000,[1,2,2,3]);
+railLine('butter',-100,3100,[[.6,true],[.8,true],[1,false],[1.1,true],[1.4,false],[1.4,true],[1.8,false],[1.2,true]],110);
 // Highlands Big Air: every size from MINI to GIGANTIC on two lines, with the long run-outs they need.
-kickerLine('air',500,4000,[0,3,4,5]);kickerLine('air',870,4050,[1,4,5,2]);
+kickerLine('air',-190,6100,[0,3,4,5]);kickerLine('air',270,6150,[1,4,5,2]);
+// Snowmass Park: bigger. Left: small -> medium -> large -> medium. Middle: rail garden. Right: medium -> large -> huge.
+kickerLine('snow',-330,11100,[1,2,3,2]);kickerLine('snow',200,11150,[2,3,4]);
+railLine('snow',-60,11250,[[1.2,false],[1,true],[1.6,false],[1.4,true],[2,false],[1,true],[1.8,false]],120);
 // Ajax Rail Yard: rails and boxes, plus four minis/smalls on the right.
-railLine('yard',775,9500,[[1,true],[1.3,false],[1,true],[1.7,false],[1.2,true],[1.5,false]],60);
-railLine('yard',620,9600,[[.8,false],[1.4,true],[1,false],[1.6,false]],90);kickerLine('yard',920,9650,[0,0,1,1]);
+railLine('yard',0,14400,[[1,true],[1.3,false],[1,true],[1.7,false],[1.2,true],[1.5,false]],60);
+railLine('yard',-220,14500,[[.8,false],[1.4,true],[1,false],[1.6,false]],90);kickerLine('yard',250,14500,[0,0,1,1]);
 // Aspen Core Rail Jam: the plaza.
-railLine('core',0,12500,[[1,true],[1.3,false],[1,true]],80);railLine('core',-150,12530,[[.8,false],[1.2,true],[1,false]],80);railLine('core',150,12530,[[1,true],[.8,false],[1.2,true]],80);
+railLine('core',0,16600,[[1,true],[1.3,false],[1,true]],80);railLine('core',-180,16630,[[.8,false],[1.2,true],[1,false]],80);railLine('core',180,16630,[[1,true],[.8,false],[1.2,true]],80);
 
 export function featuresNear(x:number,y:number){
  const out:Feature[]=[];
  const c0=Math.floor((x-1500)/160),c1=Math.ceil((x+1500)/160),r0=Math.floor((y-1300)/160),r1=Math.ceil((y+1700)/160);
  for(let row=r0;row<=r1;row++)for(let col=c0;col<=c1;col++){
   const seed=row*577+col*79,px=col*160+(hash(seed)-.5)*110,py=row*160+hash(seed+2)*110;
-  if(Math.abs(px-x)>1500||px<BOUNDS.minX||px>BOUNDS.maxX||py<BOUNDS.minY||py>BOUNDS.maxY)continue;
+  if(Math.abs(px-x)>1500||px<-WORLD_X||px>WORLD_X||py<BOUNDS.minY||py>BOUNDS.maxY)continue;
   if(onTrail(px,py)||nearLandmark(px,py))continue;
   const f=forestAt(px,py);
   if(hash(seed+3)<f)out.push({kind:'tree',x:px,y:py,size:.8+hash(seed+8)*.6,seed,id:'n'+row+':'+col});
-  else if(f<.12&&hash(seed+5)<.07)out.push({kind:'rock',x:px,y:py,size:1.1+hash(seed+8)*1.3,seed,id:'n'+row+':'+col});
+  else if(f<.12&&Math.abs(px)>BARRIER_X+170&&hash(seed+5)<.07)out.push({kind:'rock',x:px,y:py,size:1.1+hash(seed+8)*1.3,seed,id:'n'+row+':'+col});
  }
  for(const f of PARK_FEATURES)if(Math.abs(f.x-x)<=1500&&f.y>=y-1700&&f.y<=y+2100)out.push(f);
  return out;

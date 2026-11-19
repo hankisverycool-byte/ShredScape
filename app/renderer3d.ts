@@ -7,7 +7,7 @@ import {computePose,blendPose,pushWeight,type PoseIn,type PoseOut,type Arm} from
 import {GRABS} from './tricks';
 import {solveLeg,type Rig,type Leg} from './rig';
 import type {Outfit,Peer,GameSettings} from './game-engine';
-import {groundHeight,LANDMARKS,LIFTS,BOUNDS,onTrail,zoneAt,forestAt,type Lift} from './world';
+import {groundHeight,LANDMARKS,LIFTS,BOUNDS,BARRIER_X,WORLD_X,onTrail,zoneAt,forestAt,type Lift} from './world';
 type Feature={kind:string;x:number;y:number;size:number;id:string;seed:number};
 type Frame={qx?:number;qy?:number;qz?:number;qw?:number;tuckAmt?:number;extAmt?:number;gtKind?:string;gtAmt?:number;balance?:number;stumble?:number;edgeAngle?:number;crash?:{kind:string;fx:number;fy:number;power:number;lean:number;side:number;tilt:number}|null;cross?:number;scissor?:number;grabStyle?:number;hour?:number;soft?:number;cam?:{mode:string;id:number;t:number};tuck?:number;lift?:number;rail?:boolean;fakie?:boolean;course?:number;edge?:number;skid?:number;absorb?:number;backseat?:number;snow?:string;view:string;settings:GameSettings;x:number;y:number;z:number;angle:number;speed:number;pushPhase:number;pushPower:number;clock:number;bail:number;spin:number;flip:number;grab:number;playing:boolean;outfit:Outfit;features:Feature[];peers:Peer[];particles:{x:number;y:number;z:number;size:number;life:number}[]};
 const S=.05;
@@ -42,7 +42,28 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const world=new T.Group();scene.add(world);let chunks=new Map<number,T.Group>();let featureMap=new Map<string,T.Group>();
  const C_ON=[new T.Color('#f2f0df'),new T.Color('#e4e9df')],C_PARK=new T.Color('#fbfcf8'),C_OFF=new T.Color('#cbded6'),C_FOREST=new T.Color('#a9c9b7'),C_ROCK=new T.Color('#8f9fa3'),C_ICE=new T.Color('#c3e4ec'),_c=new T.Color();
  // Terrain chunk: 1000 engine units of mountain, the full width of the world. Colour says what the snow is: groomed, park, off-piste, forest, bare rock on the steeps, ice.
- function makeTerrain(chunk:number){const group=new T.Group(),start=chunk*1000,width=(BOUNDS.maxX-BOUNDS.minX+400)*S;const geo=new T.PlaneGeometry(width,50,104,25);geo.rotateX(Math.PI/2);const a=geo.attributes.position;const cs:number[]=[];
+
+ // ---- Barriers and the crowd: padded panels along both sides of the course, spectators standing on the stands behind them. ----
+ const crowdGeoB=new T.CapsuleGeometry(.28,.55,2,6),crowdGeoH=new T.SphereGeometry(.2,6,5);crowdGeoB.userData.assetShared=true;crowdGeoH.userData.assetShared=true;
+ const crowdMat=new T.MeshStandardMaterial({color:'#ffffff',roughness:.9,flatShading:true}),headMat=new T.MeshStandardMaterial({color:'#ffffff',roughness:.8,flatShading:true});crowdMat.userData.assetShared=true;headMat.userData.assetShared=true;
+ const SHIRTS=['#d6453b','#2f6fd1','#e8c24a','#3fae5a','#f2f2f2','#ed9a6c','#8a4bd1','#22303a','#ff7aa8','#35c5c5'],SKIN=['#f1c9a5','#d9a47a','#b57d54','#8a5a3b','#6b4430'],PANELS=['#f4f4f0','#d6453b','#2f6fd1','#e8c24a'];
+ type Crowd={b:T.InstancedMesh;h:T.InstancedMesh;x:Float32Array;y:Float32Array;g:Float32Array;ph:Float32Array;n:number};
+ const crowds=new Map<number,Crowd>(),_cd=new T.Object3D(),_cc=new T.Color();
+ function buildBarriers(group:T.Group,chunk:number){const start=chunk*1000,PAN=80;
+  for(const side of [-1,1])for(let y=start;y<start+1000;y+=PAN){const yy=y+PAN/2;if(yy<BOUNDS.minY||yy>BOUNDS.maxY)continue;const gy=ground(side*BARRIER_X,yy),k=Math.floor(y/PAN)+(side>0?2:0);
+   box(group,PANELS[k%PANELS.length],side*BARRIER_X*S,gy+.55,-yy*S,.2,1.1,PAN*S*.97);box(group,'#262c31',side*BARRIER_X*S,gy+.2,-yy*S,.24,.4,PAN*S*.97);
+   if(k%4===0){const sg=box(group,PANELS[(k/4+1)%PANELS.length],side*(BARRIER_X+10)*S,gy+1.9,-yy*S,.1,1.1,PAN*S*.9);sg.castShadow=false;box(group,'#262c31',side*(BARRIER_X+10)*S,gy+.9,-yy*S,.12,1.2,.12);}}
+  // the crowd: three rows behind each barrier, packed together, in bright jackets
+  const per:{x:number;y:number}[]=[];for(const side of [-1,1])for(let row=0;row<4;row++)for(let i=0;i*20<1000;i++){const h0=hash(chunk*911+row*131+i*7+(side>0?5:0)),y=start+i*20+h0*14,x=side*(BARRIER_X+34+row*26+hash(h0*997)*10);if(y<BOUNDS.minY||y>BOUNDS.maxY)continue;per.push({x,y});}
+  if(!per.length)return;const n=per.length,b=new T.InstancedMesh(crowdGeoB,crowdMat,n),hd=new T.InstancedMesh(crowdGeoH,headMat,n),c:Crowd={b,h:hd,x:new Float32Array(n),y:new Float32Array(n),g:new Float32Array(n),ph:new Float32Array(n),n};
+  per.forEach((q,i)=>{c.x[i]=q.x;c.y[i]=q.y;c.g[i]=ground(q.x,q.y);c.ph[i]=hash(i*31+chunk)*6.28;b.setColorAt(i,_cc.set(SHIRTS[Math.floor(hash(i*17+chunk*3)*SHIRTS.length)]));hd.setColorAt(i,_cc.set(SKIN[Math.floor(hash(i*29+chunk*5)*SKIN.length)]));});
+  b.frustumCulled=false;hd.frustumCulled=false;b.castShadow=false;hd.castShadow=false;group.add(b,hd);crowds.set(chunk,c);animateCrowd(c,0,-1e9);}
+ // The crowd cheers: people near the rider hop up and down.
+ function animateCrowd(c:Crowd,t:number,ry:number){for(let i=0;i<c.n;i++){const d=Math.abs(c.y[i]-ry),cheer=Math.max(0,1-d/520),bob=Math.abs(Math.sin(t*5.5+c.ph[i]))*.5*cheer+Math.sin(t*1.7+c.ph[i])*.03,gy=c.g[i]+bob;
+   _cd.position.set(c.x[i]*S,gy+.55,-c.y[i]*S);_cd.rotation.set(0,Math.atan2(-c.x[i],0)*0+(c.x[i]>0?Math.PI/2:-Math.PI/2),Math.sin(t*3+c.ph[i])*.08*cheer);_cd.updateMatrix();c.b.setMatrixAt(i,_cd.matrix);
+   _cd.position.y=gy+1.3;_cd.rotation.set(0,0,0);_cd.updateMatrix();c.h.setMatrixAt(i,_cd.matrix);}
+  c.b.instanceMatrix.needsUpdate=true;c.h.instanceMatrix.needsUpdate=true;}
+ function makeTerrain(chunk:number){const group=new T.Group(),start=chunk*1000,width=(2*WORLD_X+400)*S;const geo=new T.PlaneGeometry(width,50,170,25);geo.rotateX(Math.PI/2);const a=geo.attributes.position;const cs:number[]=[];
  for(let i=0;i<a.count;i++){const xx=a.getX(i)/S,yy=start+(a.getZ(i)+25)/S,h=ground(xx,yy);a.setY(i,h);a.setZ(i,-yy*S);
   const steep=Math.hypot(ground(xx+40,yy)-ground(xx-40,yy),ground(xx,yy+40)-ground(xx,yy-40))/80,z=zoneAt(xx,yy);
   if(onTrail(xx,yy))_c.copy(z&&z.kind==='park'?C_PARK:C_ON[hash(i+chunk)>.82?1:0]);
@@ -64,8 +85,9 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   for(let y=L.y1;y<=L.y0;y+=600){if(y<start||y>=start+1000)continue;const p=pt(y);const tw=new T.Group();tw.position.set(p.x,p.y-10,p.z);box(tw,'#536860',0,5,0,.3,10,.3);box(tw,'#52645b',0,10,0,4,.25,.3);group.add(tw);
    const q=pt(Math.min(L.y0,y+600)),mid=p.clone().add(q).multiplyScalar(.5),cable=box(group,'#586961',0,0,0,.04,.04,1);cable.position.copy(mid);cable.scale.z=p.distanceTo(q);cable.lookAt(q);cable.castShadow=false;}}
  // Far peaks: a ring of tall cones beyond the playable walls, and a back wall behind the summits.
- for(const side of [-1,1])for(let i=0;i<4;i++){const peak=mesh(coneGeo,i%2?'#8da7a6':'#7c999a',group,[side*(BOUNDS.maxX*S+14+hash(chunk*7+i)*34),ground(0,start+300)+14,-(start+i*250)*S],[26,46+hash(i+chunk)*30,30]);peak.castShadow=false;}
+ for(const side of [-1,1])for(let i=0;i<4;i++){const peak=mesh(coneGeo,i%2?'#8da7a6':'#7c999a',group,[side*(WORLD_X*S+14+hash(chunk*7+i)*34),ground(0,start+300)+14,-(start+i*250)*S],[26,46+hash(i+chunk)*30,30]);peak.castShadow=false;}
  if(chunk<=-1)for(let i=-9;i<=9;i++){const peak=mesh(coneGeo,i%2?'#8da7a6':'#7c999a',group,[i*21+hash(i)*8,ground(0,-1000)+30,-(start+300)*S],[30,60+hash(i+3)*40,32]);peak.castShadow=false;}
+ buildBarriers(group,chunk);
  world.add(group);return group;}
  function disposeGroup(group:T.Object3D){group.traverse(obj=>{if(obj instanceof T.Mesh&&!obj.geometry.userData.assetShared&&![boxGeo,coneGeo,sphereGeo].includes(obj.geometry))obj.geometry.dispose();if(obj instanceof T.Mesh){const list=Array.isArray(obj.material)?obj.material:[obj.material];for(const m of list)if(!m.userData.assetShared&&![...materials.values()].includes(m as T.MeshStandardMaterial))m.dispose();}if(obj instanceof T.SkinnedMesh)obj.skeleton.dispose();if(obj instanceof T.Sprite&&!obj.material.userData.assetShared){obj.material.map?.dispose();obj.material.dispose();}});group.removeFromParent();}
  function makeFeature(f:Feature){const g=new T.Group();g.position.set(f.x*S,ground(f.x,f.y),-f.y*S);
@@ -345,7 +367,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   const floor=ground(o.position.x/S,-o.position.z/S)+.06;if(o.position.y<floor){o.position.y=floor;d.vel.y=Math.abs(d.vel.y)>1?-d.vel.y*.3:0;d.vel.x*=.6;d.vel.z*=.6;d.spin.multiplyScalar(.55);}}}
  function draw(f:Frame){const fdt=Math.min(.05,Math.max(0,f.clock-lastClock));lastClock=f.clock;stepDebris(fdt);layTracks(f);if(f.bail>0&&!wasBail)shake=1;wasBail=f.bail>0;shake*=Math.exp(-5*fdt);if(assetRevision!==seenAssetRevision){seenAssetRevision=assetRevision;for(const g of featureMap.values())disposeGroup(g);featureMap.clear();local.signature='';for(const r of remotes.values())r.signature='';}
  const w=canvas.clientWidth,h=canvas.clientHeight;if(w!==width||h!==height){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- const chunk=Math.floor(f.y/1000);if(chunk!==zone){zone=chunk;for(let n=chunk-2;n<=chunk+4;n++)if(!chunks.has(n))chunks.set(n,makeTerrain(n));for(const [n,g]of chunks)if(n<chunk-2||n>chunk+4){disposeGroup(g);chunks.delete(n);}}
+ const chunk=Math.floor(f.y/1000);if(chunk!==zone){zone=chunk;for(let n=chunk-2;n<=chunk+4;n++)if(!chunks.has(n))chunks.set(n,makeTerrain(n));for(const [n,g]of chunks)if(n<chunk-2||n>chunk+4){disposeGroup(g);chunks.delete(n);crowds.delete(n);}}
  const ids=new Set(f.features.map(p=>p.id));for(const feature of f.features)if(!featureMap.has(feature.id))featureMap.set(feature.id,makeFeature(feature));for(const[id,g]of featureMap)if(!ids.has(id)){disposeGroup(g);featureMap.delete(id);}
  if(local.signature!==JSON.stringify(f.outfit)){disposeGroup(local.root);local=rider(f.outfit);}if(f.view==='wardrobe'||f.view==='shop')pose(local,{...f,z:0,angle:f.outfit.gear==='snowboard'?Math.PI/2:0,speed:0,pushPower:0},f.clock);else pose(local,f,f.clock,f.bail,f.spin,f.flip,f.grab);
  for(const peer of f.peers){let r=remotes.get(peer.id);if(!r||r.signature!==JSON.stringify(peer.outfit)){if(r)disposeGroup(r.root);r=rider(peer.outfit,peer.name);remotes.set(peer.id,r);}pose(r,{...peer,pushPhase:peer.motion?.pushPhase,pushPower:peer.motion?.pushPower},f.clock,0,peer.motion?.spin||0,peer.motion?.flip||0,peer.motion?.grab||0);}
@@ -386,6 +408,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  if(wardrobe){if(!camera.view?.enabled||camera.view.fullWidth!==w||camera.view.fullHeight!==h)camera.setViewOffset(w,h,-w*.23,0,w,h);}else if(camera.view?.enabled)camera.clearViewOffset();
  const quality=f.settings.quality==='high';renderer.shadowMap.enabled=quality;const pixelRatio=quality?Math.min(window.devicePixelRatio,1.5):.8;if(renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio);
  {const L=light(f.hour??12);scene.fog!.color.copy(L.sky);renderer.setClearColor(L.sky);hemi.color.copy(L.hemiSky);hemi.intensity=L.hemi;sun.color.copy(L.sun);sun.intensity=L.sunI;sun.position.set(f.x*S+L.dx,py+L.dy,-f.y*S+15);}sun.target.position.set(f.x*S,py,-f.y*S-15);
+ for(const [n,c] of crowds){if(Math.abs((n+.5)*1000-f.y)<1900)animateCrowd(c,f.clock,f.y);}
  // Chairs: position depends only on the clock, so they keep moving at the same slow pace everywhere. Only chairs near the camera are shown.
  {const t=f.clock;for(const c of chairs){const L=c.L,len=L.y0-L.y1,s=((c.i/c.n)*len+(c.up?1:-1)*t*CHAIR_SPEED+len*10)%len,yy=c.up?L.y1+s:L.y1+(len-s),k=(L.y0-yy)/len,xl=L.x0+(L.x1-L.x0)*k+(c.up?-16:16);
    if(Math.abs(yy-f.y)>1700||wardrobe){c.g.visible=false;continue;}c.g.visible=true;c.g.position.set(xl*S,ground(xl,yy)+8.4,-yy*S);c.g.rotation.y=c.up?0:Math.PI;c.g.rotation.z=Math.sin(t*.8+c.i)*.03;}}

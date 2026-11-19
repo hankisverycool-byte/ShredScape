@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mod} from './helpers.mjs';
 const W=await mod('app/world.ts'),P=await mod('app/park.ts'),R=await mod('app/race.ts');
-const {BOUNDS,ZONES,TRAILS,LOCATIONS,LIFTS,START,PARK_FEATURES,MOUNTAINS,groundHeight,trailX,zoneAt,onTrail,snowAt,featuresNear,regionAt}=W;
+const {BARRIER_X,SECTIONS,BOUNDS,ZONES,TRAILS,LOCATIONS,LIFTS,START,PARK_FEATURES,MOUNTAINS,groundHeight,trailX,zoneAt,onTrail,snowAt,featuresNear,regionAt}=W;
 const slope=(x,y)=>Math.hypot((groundHeight(x+4,y)-groundHeight(x-4,y))/8,(groundHeight(x,y+4)-groundHeight(x,y-4))/8);
-test('one long narrow mountain with four park zones on detours',()=>{
- assert.equal(MOUNTAINS.length,1);assert.equal(MOUNTAINS[0].name,'Aspen Mountain');assert.ok(BOUNDS.maxY-BOUNDS.minY>=4*(BOUNDS.maxX-BOUNDS.minX),'long and narrow');
+test('one straight course: six sections back to back between barriers, with four park zones',()=>{
+ assert.equal(BARRIER_X,640);assert.equal(BOUNDS.maxX,BARRIER_X);assert.equal(BOUNDS.minX,-BARRIER_X);assert.ok(BOUNDS.maxY-BOUNDS.minY>=12*(BOUNDS.maxX-BOUNDS.minX),'long and narrow');
+ assert.equal(SECTIONS.length,6);for(let i=1;i<SECTIONS.length;i++){const gap=SECTIONS[i].y0-SECTIONS[i-1].y1;assert.ok(gap>=0&&gap<=400,SECTIONS[i].name+' follows '+SECTIONS[i-1].name+' directly (gap '+gap+')');}
  assert.equal(ZONES.filter(z=>z.kind==='park').length,4);assert.ok(ZONES.some(z=>z.kind==='town'));
  for(const z of ZONES){assert.ok(z.x0>=BOUNDS.minX&&z.x1<=BOUNDS.maxX&&z.y0>=BOUNDS.minY&&z.y1<=BOUNDS.maxY,z.name+' inside the world');assert.ok(z.x1>z.x0&&z.y1>z.y0);}
- assert.equal(regionAt(700,4500),'Highlands Big Air');assert.equal(regionAt(0,12700),'Aspen Town');assert.equal(regionAt(0,500),'Aspen Mountain');
+ assert.equal(regionAt(0,7000),'Highlands Big Air');assert.equal(regionAt(0,17000),'Aspen Town');assert.equal(regionAt(0,500),'Summit Chute');
+ for(const z of ZONES){const sec=SECTIONS.find(q=>q.id===z.id);assert.ok(sec&&sec.y0===z.y0&&sec.y1===z.y1,z.id+' matches its section');}
 });
 test('the terrain is finite everywhere, falls to the valley, and the arrival points are flat',()=>{
  for(let x=BOUNDS.minX;x<=BOUNDS.maxX;x+=370)for(let y=BOUNDS.minY;y<=BOUNDS.maxY;y+=550)assert.ok(Number.isFinite(groundHeight(x,y)));
@@ -16,11 +18,14 @@ test('the terrain is finite everywhere, falls to the valley, and the arrival poi
  for(const l of LOCATIONS)assert.ok(slope(l.x,l.y)<.02,l.name+' slope '+slope(l.x,l.y).toFixed(3));
  assert.ok(slope(START.x,START.y)<.02);
 });
-test('detours peel off the main run and rejoin it, passing through their park',()=>{
- const main=TRAILS.find(t=>t.id==='spar-gulch'),mx=y=>trailX(main,y);
- for(const [id,park] of [['buttermilk-run','butter-park'],['snowmass-run','snowmass-park'],['highlands-run','big-air'],['yard-run','rail-yard']]){const t=TRAILS.find(q=>q.id===id),z=ZONES.find(q=>q.id===park),a=t.pts[0][0],b=t.pts.at(-1)[0];
-  assert.ok(Math.abs(t.pts[0][1]-mx(a))<150,id+' starts on the main run');assert.ok(Math.abs(t.pts.at(-1)[1]-mx(b))<150,id+' rejoins the main run');
-  let inside=false;for(let y=a;y<=b;y+=100){const x=trailX(t,y);if(x>z.x0&&x<z.x1&&y>z.y0&&y<z.y1)inside=true;}assert.ok(inside,id+' passes through '+park);}
+test('the main run is nearly straight, wall to wall between the barriers',()=>{
+ const t=TRAILS.find(q=>q.id==='spar-gulch');assert.equal(TRAILS.length,1);assert.ok(t.w>=2*BARRIER_X);
+ const xs=[];for(let y=t.pts[0][0];y<=t.pts.at(-1)[0];y+=200)xs.push(trailX(t,y));assert.ok(Math.max(...xs.map(Math.abs))<=60,'centre line stays within 60 of straight');
+ for(const y of [0,4000,9000,15000]){assert.equal(onTrail(-BARRIER_X+30,y),true);assert.equal(onTrail(BARRIER_X-30,y),true);}
+});
+test('forest and crowd stands are behind the barriers, never on the course',()=>{
+ for(const [x,y] of [[0,5000],[0,12000],[300,3000]])for(const f of featuresNear(x,y))if(f.kind==='tree'||f.kind==='rock')assert.ok(Math.abs(f.x)>BARRIER_X+100,'obstacle at '+Math.round(f.x)+','+Math.round(f.y));
+ assert.ok(groundHeight(BARRIER_X+400,6000)>groundHeight(BARRIER_X,6000)+30,'stands rise behind the barrier');
 });
 test('every trail has sensible length and slope and stays in the world',()=>{
  for(const t of TRAILS){const a=t.pts[0][0],b=t.pts.at(-1)[0];assert.ok(b-a>=1000,t.name+' length');
@@ -29,7 +34,7 @@ test('every trail has sensible length and slope and stays in the world',()=>{
   assert.equal(trailX(t,a-1),null);assert.equal(trailX(t,b+1),null);}
 });
 test('snow: trails and parks are groomed, off-piste is powder',()=>{
- assert.equal(snowAt(0,5000),'groomed');assert.equal(snowAt(1400,4000),'powder');assert.equal(onTrail(-1025,5000),true);assert.equal(onTrail(0,12700),true);
+ assert.equal(snowAt(0,5000),'groomed');assert.equal(snowAt(1400,4000),'powder');assert.equal(onTrail(-300,5000),true);assert.equal(onTrail(0,16700),true);
 });
 test('every park feature is inside its own zone, and kickers have room to land',()=>{
  const zoneOf={butter:'butter-park',snow:'snowmass-park',air:'big-air',yard:'rail-yard',core:'aspen-town'};
@@ -54,6 +59,6 @@ test('trees stay off trails, parks and lodges; the bowl above the treeline is ba
 test('features lookup is fast enough to run every half second',()=>{const t=performance.now();for(let i=0;i<30;i++)featuresNear(-1000+i*60,4000+i*150);assert.ok((performance.now()-t)/30<5);});
 test('lifts run uphill, and the timed course follows Spar Gulch from top to bottom',()=>{
  for(const L of LIFTS){assert.ok(L.y0>L.y1);assert.ok(groundHeight(L.x1,L.y1)>groundHeight(L.x0,L.y0)+100,L.name);}
- const c=R.COURSE;assert.equal(c.name,'Spar Gulch GS');assert.equal(c.gates.length,9);assert.ok(c.gates.at(-1).y-c.start.y>5000);
+ const c=R.COURSE;assert.equal(c.name,'Spar Gulch GS');assert.equal(c.gates.length,9);assert.ok(c.gates.at(-1).y-c.start.y>2000);
  for(const g of [c.start,...c.gates])assert.ok(Math.abs(g.x-trailX(TRAILS.find(t=>t.id==='spar-gulch'),g.y))<g.w);
 });

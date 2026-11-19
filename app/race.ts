@@ -2,7 +2,7 @@ import {trailById,trailX} from './world';
 
 // Spar Gulch GS: a timed giant-slalom run down Aspen Mountain's Spar Gulch. Riders travel toward +y (downhill).
 export type Gate={x:number;y:number;w:number;kind:'start'|'gate'|'finish';n:number};
-const SPAR=trailById('spar-gulch'),START=1400,FINISH=8200,GATES=8,STEP=(FINISH-START)/(GATES+1);
+const SPAR=trailById('spar-gulch'),START=300,FINISH=2500,GATES=8,STEP=(FINISH-START)/(GATES+1);
 const cx=(y:number)=>trailX(SPAR,y)??0;
 export const COURSE:{name:string;start:Gate;gates:Gate[]}={
  name:'Spar Gulch GS',

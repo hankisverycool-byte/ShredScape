@@ -7,23 +7,24 @@ import {railShape,kickerClass} from './park';
 // Top-down map of the whole valley, drawn from the same terrain, trails, parks and lifts the game uses.
 // The shaded base is built a slice at a time so opening the game never stalls; labels and pins are vector overlays.
 // The mountain is long and narrow, so the map lies on its side: downhill runs left to right.
-const PX=.08,W=Math.round((BOUNDS.maxY-BOUNDS.minY)*PX),H=Math.round((BOUNDS.maxX-BOUNDS.minX)*PX);
-const toMap=(x:number,y:number)=>[(y-BOUNDS.minY)*PX,(x-BOUNDS.minX)*PX] as [number,number];
+// The course is long and narrow, so the map lies on its side (downhill runs left to right) and is stretched across so the width is readable.
+const PX=.06,XS=3.2,W=Math.round((BOUNDS.maxY-BOUNDS.minY)*PX),H=Math.round((BOUNDS.maxX-BOUNDS.minX)*PX*XS);
+const toMap=(x:number,y:number)=>[(y-BOUNDS.minY)*PX,(x-BOUNDS.minX)*PX*XS] as [number,number];
 const LEVEL={green:'#3fae5a',blue:'#3a74d6',black:'#1d2326'};
 let cache:HTMLCanvasElement|null=null,cacheUrl='',building=false;const waiting:(()=>void)[]=[];
 const sm=(a:number,b:number,x:number)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 function ensureMap(cb:()=>void){
  if(cache){cb();return;}waiting.push(cb);if(building)return;building=true;
  const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d')!,img=ctx.createImageData(W,H),hs=new Float32Array((W+1)*(H+1));
- let row=0;const hAt=(px:number,py:number)=>groundHeight(BOUNDS.minX+py/PX,BOUNDS.minY+px/PX);
+ let row=0;const hAt=(px:number,py:number)=>groundHeight(BOUNDS.minX+py/(PX*XS),BOUNDS.minY+px/PX);
  // pass 1 (sliced): heights. pass 2: shade from neighbours.
  function slice(){const t0=performance.now();
   while(row<=H&&performance.now()-t0<8){for(let px=0;px<=W;px++)hs[row*(W+1)+px]=hAt(px,row);row++;}
   if(row<=H){setTimeout(slice,0);return;}
   for(let py=0;py<H;py++)for(let px=0;px<W;px++){
-   const i=py*(W+1)+px,h=hs[i],shade=Math.max(-.25,Math.min(.25,((h-hs[i+1])+(h-hs[i+W+1]))*.22)),x=BOUNDS.minX+py/PX,y=BOUNDS.minY+px/PX;
+   const i=py*(W+1)+px,h=hs[i],shade=Math.max(-.25,Math.min(.25,((h-hs[i+1])+(h-hs[i+W+1]))*.22)),x=BOUNDS.minX+py/(PX*XS),y=BOUNDS.minY+px/PX;
    // forest tint (same rule as the game's treeline) and bare rock on the steeps
-   const forest=sm(2300,3500,y)*(.3+.7*(.5+.5*Math.sin(x*.0017+y*.0009)*Math.sin(x*.0011-y*.0014+2)))*(1-sm(9000,9400,y)),steep=Math.hypot(h-hs[i+1],h-hs[i+W+1])/(1/PX)>.055;
+   const forest=0,steep=Math.hypot(h-hs[i+1],h-hs[i+W+1])/(1/PX)>.055;
    let r=232,g=240,b=236;r-=forest*70;g-=forest*38;b-=forest*58;if(steep){r-=40;g-=34;b-=26;}
    const k=1+shade,o=(py*W+px)*4;img.data[o]=r*k;img.data[o+1]=g*k;img.data[o+2]=b*k;img.data[o+3]=255;}
   ctx.putImageData(img,0,0);
@@ -34,10 +35,10 @@ function ensureMap(cb:()=>void){
   ctx.strokeStyle='#27322d';ctx.lineWidth=1.2;ctx.setLineDash([5,3]);for(const L of LIFTS){ctx.beginPath();ctx.moveTo(...toMap(L.x0,L.y0));ctx.lineTo(...toMap(L.x1,L.y1));ctx.stroke();}ctx.setLineDash([]);
   // park features: kickers in their size colour, rails/boxes as bars
   for(const f of PARK_FEATURES){const [mx,my]=toMap(f.x,f.y);
-   if(f.kind==='ramp'){const c=kickerClass(f);ctx.fillStyle='#e8762c';ctx.strokeStyle='#10201a';ctx.lineWidth=1;const w=Math.max(2.5,c.half*PX*.9),h=Math.max(2.5,c.run*PX*.5);ctx.beginPath();ctx.ellipse(mx,my,h,w,0,0,7);ctx.fill();ctx.stroke();}
+   if(f.kind==='ramp'){const c=kickerClass(f);ctx.fillStyle='#e8762c';ctx.strokeStyle='#10201a';ctx.lineWidth=1;const w=Math.max(2.5,c.half*PX*XS*.9),h=Math.max(2.5,c.run*PX*.5);ctx.beginPath();ctx.ellipse(mx,my,h,w,0,0,7);ctx.fill();ctx.stroke();}
    else if(f.kind==='rail'){const r=railShape(f);ctx.strokeStyle=r.box?'#d6453b':'#e0a63c';ctx.lineWidth=r.box?3:2;ctx.beginPath();ctx.moveTo(mx-r.len*PX/2,my);ctx.lineTo(mx+r.len*PX/2,my);ctx.stroke();}}
   // timed course gates
-  for(const g of [COURSE.start,...COURSE.gates]){const [gx,gy]=toMap(g.x,g.y),hw=g.w*PX/2;ctx.lineWidth=g.kind==='gate'?3:4;ctx.strokeStyle=g.kind==='gate'?(g.n%2?'#d6453b':'#2f6fd1'):'#13261e';ctx.beginPath();ctx.moveTo(gx,gy-hw);ctx.lineTo(gx,gy+hw);ctx.stroke();}
+  for(const g of [COURSE.start,...COURSE.gates]){const [gx,gy]=toMap(g.x,g.y),hw=g.w*PX*XS/2;ctx.lineWidth=g.kind==='gate'?3:4;ctx.strokeStyle=g.kind==='gate'?(g.n%2?'#d6453b':'#2f6fd1'):'#13261e';ctx.beginPath();ctx.moveTo(gx,gy-hw);ctx.lineTo(gx,gy+hw);ctx.stroke();}
   cache=c;cacheUrl=c.toDataURL();building=false;waiting.splice(0).forEach(f=>f());}
  slice();
 }
@@ -49,7 +50,7 @@ export function WorldMap({x,y,angle,selected,onSelect,waypoint,onPick}:{x:number
  useMap();const [px,py]=toMap(x,y),wp=waypoint?toMap(waypoint.x,waypoint.y):null;
  // Tap anywhere on the map to drop a waypoint there.
  function click(e:React.MouseEvent<SVGSVGElement>){const r=e.currentTarget.getBoundingClientRect(),vx=-40+(e.clientX-r.left)/r.width*(W+80),vy=-24+(e.clientY-r.top)/r.height*(H+48);
-  const wx=BOUNDS.minX+vy/PX,wy=BOUNDS.minY+vx/PX;if(wx>=BOUNDS.minX&&wx<=BOUNDS.maxX&&wy>=BOUNDS.minY&&wy<=BOUNDS.maxY)onPick(Math.round(wx),Math.round(wy));}
+  const wx=BOUNDS.minX+vy/(PX*XS),wy=BOUNDS.minY+vx/PX;if(wx>=BOUNDS.minX&&wx<=BOUNDS.maxX&&wy>=BOUNDS.minY&&wy<=BOUNDS.maxY)onPick(Math.round(wx),Math.round(wy));}
  return <div className="world-map2">
   <svg viewBox={`-40 -24 ${W+80} ${H+48}`} role="img" aria-label="Aspen mountain map. Tap the map to set a waypoint." onClick={click}>
    {cacheUrl?<image href={cacheUrl} width={W} height={H}/>:<rect width={W} height={H} fill="#dfe9e4"/>}
@@ -66,12 +67,13 @@ export function WorldMap({x,y,angle,selected,onSelect,waypoint,onPick}:{x:number
 
 export function MiniMap({x,y,angle,peers=[],waypoint}:{x:number;y:number;angle:number;peers?:{x:number;y:number;outfit:{jacket:string}}[];waypoint?:Waypoint|null}){
  const ref=useRef<HTMLCanvasElement>(null),ready=useMap();
- useEffect(()=>{const c=ref.current;if(!c)return;const ctx=c.getContext('2d')!,size=c.width,span=1500*PX,[px,py]=toMap(x,y),k=size/span;
-  ctx.clearRect(0,0,size,size);ctx.fillStyle='#dfe9e4';ctx.fillRect(0,0,size,size);if(ready)ctx.drawImage(ready,px-span/2,py-span/2,span,span,0,0,size,size);
-  for(const p of peers){const [qx,qy]=toMap(p.x,p.y);ctx.fillStyle=p.outfit.jacket;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(size/2+(qx-px)*k,size/2+(qy-py)*k,5,0,7);ctx.fill();ctx.stroke();}
-  if(waypoint){const [qx,qy]=toMap(waypoint.x,waypoint.y);let dx=(qx-px)*k,dy=(qy-py)*k;const m=size/2-10,out=Math.abs(dx)>m||Math.abs(dy)>m;if(out){const f=m/Math.max(Math.abs(dx),Math.abs(dy));dx*=f;dy*=f;}
-   ctx.save();ctx.translate(size/2+dx,size/2+dy);ctx.fillStyle='#ff4a1c';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();if(out){ctx.rotate(Math.atan2(dy,dx)+Math.PI/2);ctx.moveTo(0,-9);ctx.lineTo(7,6);ctx.lineTo(-7,6);}else{ctx.moveTo(0,-10);ctx.lineTo(8,0);ctx.lineTo(0,10);ctx.lineTo(-8,0);}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
-  ctx.save();ctx.translate(size/2,size/2);ctx.rotate(Math.PI/2+angle);ctx.fillStyle='#ee7f4a';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(8,8);ctx.lineTo(0,4);ctx.lineTo(-8,8);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ useEffect(()=>{const c=ref.current;if(!c)return;const ctx=c.getContext('2d')!,size=c.width,span=1500*PX,[px,py]=toMap(x,y),k=size/span,ky=size/H; // the crop spans the course's full width and 1500 units of its length
+  ctx.clearRect(0,0,size,size);ctx.fillStyle='#dfe9e4';ctx.fillRect(0,0,size,size);if(ready)ctx.drawImage(ready,px-span/2,0,span,H,0,0,size,size);
+  const cx=(qx:number)=>size/2+(qx-px)*k,cy=(qy:number)=>(qy)*ky;
+  for(const p of peers){const [qx,qy]=toMap(p.x,p.y);ctx.fillStyle=p.outfit.jacket;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx(qx),cy(qy),5,0,7);ctx.fill();ctx.stroke();}
+  if(waypoint){const [qx,qy]=toMap(waypoint.x,waypoint.y);let X=cx(qx),Y=cy(qy);const m=10,out=X<m||X>size-m||Y<m||Y>size-m;if(out){const dx=X-size/2,dy=Y-cy(py),f=(size/2-m)/Math.max(Math.abs(dx),1);X=size/2+dx*Math.min(1,f);Y=Math.max(m,Math.min(size-m,cy(py)+dy*Math.min(1,f)));}
+   ctx.save();ctx.translate(X,Y);ctx.fillStyle='#ff4a1c';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();if(out){ctx.rotate(Math.atan2(Y-cy(py),X-size/2)+Math.PI/2);ctx.moveTo(0,-9);ctx.lineTo(7,6);ctx.lineTo(-7,6);}else{ctx.moveTo(0,-10);ctx.lineTo(8,0);ctx.lineTo(0,10);ctx.lineTo(-8,0);}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+  ctx.save();ctx.translate(size/2,cy(py));ctx.rotate(Math.PI/2+angle);ctx.fillStyle='#ee7f4a';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(8,8);ctx.lineTo(0,4);ctx.lineTo(-8,8);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
  },[x,y,angle,peers,ready,waypoint]);
  return <canvas ref={ref} className="minimap" width={180} height={180} aria-label="Minimap"/>;
 }
