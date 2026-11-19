@@ -75,21 +75,23 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const crowdGeoB=new T.CapsuleGeometry(.28,.55,2,6),crowdGeoH=new T.SphereGeometry(.2,6,5);crowdGeoB.userData.assetShared=true;crowdGeoH.userData.assetShared=true;
  const crowdMat=new T.MeshStandardMaterial({color:'#ffffff',roughness:.9,flatShading:true}),headMat=new T.MeshStandardMaterial({color:'#ffffff',roughness:.8,flatShading:true});crowdMat.userData.assetShared=true;headMat.userData.assetShared=true;
  const SHIRTS=['#d6453b','#2f6fd1','#e8c24a','#3fae5a','#f2f2f2','#ed9a6c','#8a4bd1','#22303a','#ff7aa8','#35c5c5'],SKIN=['#f1c9a5','#d9a47a','#b57d54','#8a5a3b','#6b4430'],PANELS=['#f4f4f0','#d6453b','#2f6fd1','#e8c24a'];
- type Crowd={b:T.InstancedMesh;h:T.InstancedMesh;x:Float32Array;y:Float32Array;g:Float32Array;ph:Float32Array;n:number};
+ type Crowd={b:T.InstancedMesh;h:T.InstancedMesh;x:Float32Array;y:Float32Array;g:Float32Array;ph:Float32Array;sc:Float32Array;yw:Float32Array;n:number};
  const crowds=new Map<number,Crowd>(),_cd=new T.Object3D(),_cc=new T.Color();
  function buildBarriers(group:T.Group,chunk:number){const start=chunk*1000,PAN=80;
   for(const side of [-1,1])for(let y=start;y<start+1000;y+=PAN){const yy=y+PAN/2;if(yy<BOUNDS.minY||yy>BOUNDS.maxY)continue;const gy=ground(side*BARRIER_X,yy),k=Math.floor(y/PAN)+(side>0?2:0);
    box(group,PANELS[k%PANELS.length],side*BARRIER_X*S,gy+.55,-yy*S,.2,1.1,PAN*S*.97);box(group,'#262c31',side*BARRIER_X*S,gy+.2,-yy*S,.24,.4,PAN*S*.97);
    if(k%4===0){const sg=box(group,PANELS[(k/4+1)%PANELS.length],side*(BARRIER_X+10)*S,gy+1.9,-yy*S,.1,1.1,PAN*S*.9);sg.castShadow=false;box(group,'#262c31',side*(BARRIER_X+10)*S,gy+.9,-yy*S,.12,1.2,.12);}}
   // the crowd: three rows behind each barrier, packed together, in bright jackets
-  const per:{x:number;y:number}[]=[];for(const side of [-1,1])for(let row=0;row<4;row++)for(let i=0;i*20<1000;i++){const h0=hash(chunk*911+row*131+i*7+(side>0?5:0)),y=start+i*20+h0*14,x=side*(BARRIER_X+34+row*26+hash(h0*997)*10);if(y<BOUNDS.minY||y>BOUNDS.maxY)continue;per.push({x,y});}
-  if(!per.length)return;const n=per.length,b=new T.InstancedMesh(crowdGeoB,crowdMat,n),hd=new T.InstancedMesh(crowdGeoH,headMat,n),c:Crowd={b,h:hd,x:new Float32Array(n),y:new Float32Array(n),g:new Float32Array(n),ph:new Float32Array(n),n};
-  per.forEach((q,i)=>{c.x[i]=q.x;c.y[i]=q.y;c.g[i]=ground(q.x,q.y);c.ph[i]=hash(i*31+chunk)*6.28;b.setColorAt(i,_cc.set(SHIRTS[Math.floor(hash(i*17+chunk*3)*SHIRTS.length)]));hd.setColorAt(i,_cc.set(SKIN[Math.floor(hash(i*29+chunk*5)*SKIN.length)]));});
+  const per:{x:number;y:number;sc:number;yaw:number}[]=[];for(const side of [-1,1])for(let cl=0;cl<5;cl++){const cs=chunk*911+cl*53+(side>0?7:0);if(hash(cs)<.35)continue; // some stretches stay empty
+   const cy=start+cl*200+hash(cs*3)*120,cnt=6+Math.floor(hash(cs*5)*9),len=30+hash(cs*7)*50;
+   for(let i=0;i<cnt;i++){const h0=hash(cs*97+i*13),h1=hash(h0*991+i),y=cy+(h0-.5)*len,x=side*(BARRIER_X+30+Math.floor(h1*2.6)*24+hash(h1*77)*12);if(y<BOUNDS.minY||y>BOUNDS.maxY)continue;per.push({x,y,sc:.85+hash(h1*31)*.3,yaw:(hash(h0*53)-.5)*1.1});}}
+  if(!per.length)return;const n=per.length,b=new T.InstancedMesh(crowdGeoB,crowdMat,n),hd=new T.InstancedMesh(crowdGeoH,headMat,n),c:Crowd={b,h:hd,x:new Float32Array(n),y:new Float32Array(n),g:new Float32Array(n),ph:new Float32Array(n),sc:new Float32Array(n),yw:new Float32Array(n),n};
+  per.forEach((q,i)=>{c.sc[i]=q.sc;c.yw[i]=q.yaw;c.x[i]=q.x;c.y[i]=q.y;c.g[i]=ground(q.x,q.y);c.ph[i]=hash(i*31+chunk)*6.28;b.setColorAt(i,_cc.set(SHIRTS[Math.floor(hash(i*17+chunk*3)*SHIRTS.length)]));hd.setColorAt(i,_cc.set(SKIN[Math.floor(hash(i*29+chunk*5)*SKIN.length)]));});
   b.frustumCulled=false;hd.frustumCulled=false;b.castShadow=false;hd.castShadow=false;group.add(b,hd);crowds.set(chunk,c);animateCrowd(c,0,-1e9);}
  // The crowd cheers: people near the rider hop up and down.
  function animateCrowd(c:Crowd,t:number,ry:number){for(let i=0;i<c.n;i++){const d=Math.abs(c.y[i]-ry),cheer=Math.max(0,1-d/520),bob=Math.abs(Math.sin(t*5.5+c.ph[i]))*.5*cheer+Math.sin(t*1.7+c.ph[i])*.03,gy=c.g[i]+bob;
-   _cd.position.set(c.x[i]*S,gy+.55,-c.y[i]*S);_cd.rotation.set(0,Math.atan2(-c.x[i],0)*0+(c.x[i]>0?Math.PI/2:-Math.PI/2),Math.sin(t*3+c.ph[i])*.08*cheer);_cd.updateMatrix();c.b.setMatrixAt(i,_cd.matrix);
-   _cd.position.y=gy+1.3;_cd.rotation.set(0,0,0);_cd.updateMatrix();c.h.setMatrixAt(i,_cd.matrix);}
+   _cd.scale.setScalar(c.sc[i]);_cd.position.set(c.x[i]*S,gy+.55*c.sc[i],-c.y[i]*S);_cd.rotation.set(0,(c.x[i]>0?Math.PI/2:-Math.PI/2)+c.yw[i],Math.sin(t*3+c.ph[i])*.08*cheer);_cd.updateMatrix();c.b.setMatrixAt(i,_cd.matrix);
+   _cd.position.y=gy+1.3*c.sc[i];_cd.rotation.set(0,0,0);_cd.updateMatrix();c.h.setMatrixAt(i,_cd.matrix);}
   c.b.instanceMatrix.needsUpdate=true;c.h.instanceMatrix.needsUpdate=true;}
  function makeTerrain(chunk:number){const group=new T.Group(),start=chunk*1000,width=(2*WORLD_X+400)*S;const geo=new T.PlaneGeometry(width,50,170,60);geo.rotateX(Math.PI/2);const a=geo.attributes.position;const cs:number[]=[];
  for(let i=0;i<a.count;i++){const xx=a.getX(i)/S,yy=start+(a.getZ(i)+25)/S,h=ground(xx,yy);a.setY(i,h);a.setZ(i,-yy*S);
@@ -413,6 +415,16 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  }
  function stepDebris(dt:number){for(const d of debris){const o=d.obj;d.vel.y-=20*dt;o.position.addScaledVector(d.vel,dt);o.rotation.x+=d.spin.x*dt;o.rotation.y+=d.spin.y*dt;o.rotation.z+=d.spin.z*dt;
   const floor=ground(o.position.x/S,-o.position.z/S)+.06;if(o.position.y<floor){o.position.y=floor;d.vel.y=Math.abs(d.vel.y)>1?-d.vel.y*.3:0;d.vel.x*=.6;d.vel.z*=.6;d.spin.multiplyScalar(.55);}}}
+ // ---- Speed streaks: flecks of snow hanging in the air around the rider; as you ride past them they stretch into lines. ----
+ const NSTR=70,strPos=new Float32Array(NSTR*6),strSeed=Array.from({length:NSTR},(_,i)=>({x:(hash(i*3.1)-.5)*30,y:hash(i*5.7)*14,z:(hash(i*7.3)-.5)*60})),strGeo=new T.BufferGeometry(),strMat=new T.LineBasicMaterial({color:'#ffffff',transparent:true,opacity:0,depthWrite:false,fog:false});
+ strGeo.setAttribute('position',new T.BufferAttribute(strPos,3));const streaks=new T.LineSegments(strGeo,strMat);streaks.frustumCulled=false;scene.add(streaks);
+ function updateStreaks(f:Frame){const kmh=f.speed*.18,a=Math.max(0,Math.min(1,(kmh-25)/70));strMat.opacity=a*.55;streaks.visible=a>0&&!f.bail;if(!streaks.visible)return;
+  const dx=Math.sin(f.course||0),dz=-Math.cos(f.course||0),len=.6+a*3.2,gy=ground(f.x,f.y)+Math.max(0,f.z)*S;
+  for(let i=0;i<NSTR;i++){const q=strSeed[i],along=((q.z+(f.x*dx*S+(-f.y)*dz*S))%60+60)%60-30,
+   // position in a frame travelling with the rider: flecks are fixed in the world so they slide backwards past the camera
+   px=f.x*S+(-q.x*dz)+dx*(-along),pz=-f.y*S+(q.x*dx)+dz*(-along),py=gy+.3+q.y*.5;
+   strPos.set([px,py,pz,px-dx*len,py,pz-dz*len],i*6);}
+  strGeo.attributes.position.needsUpdate=true;}
  function draw(f:Frame){curFeatures=f.features as never;const fdt=Math.min(.05,Math.max(0,f.clock-lastClock));lastClock=f.clock;stepDebris(fdt);layTracks(f);if(f.bail>0&&!wasBail)shake=1;wasBail=f.bail>0;shake*=Math.exp(-5*fdt);if(assetRevision!==seenAssetRevision){seenAssetRevision=assetRevision;for(const g of chunks.values())disposeGroup(g);chunks.clear();crowds.clear();zone=-999;for(const g of featureMap.values())disposeGroup(g);featureMap.clear();local.signature='';for(const r of remotes.values())r.signature='';}
  const w=canvas.clientWidth,h=canvas.clientHeight;if(w!==width||h!==height){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
  const chunk=Math.floor(f.y/1000);if(chunk!==zone){zone=chunk;for(let n=chunk-2;n<=chunk+8;n++)if(!chunks.has(n))chunks.set(n,makeTerrain(n));for(const [n,g]of chunks)if(n<chunk-2||n>chunk+8){disposeGroup(g);chunks.delete(n);crowds.delete(n);}}
@@ -456,6 +468,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  if(wardrobe){if(!camera.view?.enabled||camera.view.fullWidth!==w||camera.view.fullHeight!==h)camera.setViewOffset(w,h,-w*.23,0,w,h);}else if(camera.view?.enabled)camera.clearViewOffset();
  const quality=f.settings.quality==='high';renderer.shadowMap.enabled=quality;const pixelRatio=quality?Math.min(window.devicePixelRatio,1.5):.8;if(renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio);
  {const L=light(f.hour??12);scene.fog!.color.copy(L.sky);renderer.setClearColor(L.sky);hemi.color.copy(L.hemiSky);hemi.intensity=L.hemi;sun.color.copy(L.sun);sun.intensity=L.sunI;sun.position.set(f.x*S+L.dx,py+L.dy,-f.y*S+15);}sun.target.position.set(f.x*S,py,-f.y*S-15);
+ updateStreaks(f);
  for(const [n,c] of crowds){if(Math.abs((n+.5)*1000-f.y)<1900)animateCrowd(c,f.clock,f.y);}
  // Chairs: position depends only on the clock, so they keep moving at the same slow pace everywhere. Only chairs near the camera are shown.
  {const t=f.clock;for(const c of chairs){const L=c.L,len=L.y0-L.y1,s=((c.i/c.n)*len+(c.up?1:-1)*t*CHAIR_SPEED+len*10)%len,yy=c.up?L.y1+s:L.y1+(len-s),k=(L.y0-yy)/len,xl=L.x0+(L.x1-L.x0)*k+(c.up?-16:16);

@@ -60,7 +60,7 @@ export const LOCATIONS:Location[]=[
 ];
 export const START={x:0,y:350};
 // Flat pads so every arrival point is a place you can stand still.
-const FLATS:{x:number;y:number;bw:number;r:number;drop:number;h:number}[]=[...LOCATIONS.map(l=>({x:l.x,y:l.y,r:l.kind==='park'?110:l.kind==='summit'?60:150,drop:0,h:0,bw:l.kind==="summit"?90:220}))];
+const FLATS:{x:number;y:number;bw:number;r:number;drop:number;h:number}[]=[...LOCATIONS.map(l=>({x:l.x,y:l.y,r:l.kind==='park'?110:l.kind==='summit'?60:150,drop:0,h:0,bw:l.kind==="summit"?90:220})),{x:850,y:430,bw:180,r:170,drop:0,h:0},{x:-850,y:1500,bw:180,r:170,drop:0,h:0}]; // lodge pads (keep in step with LANDMARKS)
 for(const f of FLATS)f.h=raw(f.x,f.y)+f.drop;
 export function groundHeight(x:number,y:number){
  let h=raw(x,y);

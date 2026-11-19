@@ -30,21 +30,21 @@ export function computePose(i:PoseIn):PoseOut{
  const glide=clamp((i.speed-10)/50,0,1),airT=i.air?clamp(i.airT/.25,0,1):0,u=(1+Math.cos(i.phase))/2; // u: 1 = poles forward/planted, 0 = driven back
  const skis=!i.board;
  // --- legs: how much the knees are bent
- let flex=(i.board?lerp(.14,.4,glide):lerp(.12,.34,glide))+i.absorb*.5+i.land*.7+i.release*.25+i.skid*.25+i.push*(.1+.14*(1-u));
+ let flex=(i.board?lerp(.14,.4,glide):lerp(.3,.5,glide)+.08*Math.abs(i.edge))+i.absorb*.5+i.land*.7+i.release*.25+i.skid*.25+i.push*(.1+.14*(1-u));
  flex=Math.max(flex,i.tuck*.92);
  if(i.rail)flex=Math.max(flex,.42);
  // In the air: knees come up with a tuck (and fold hard for a grab), legs reach long when spread out.
  if(i.air)flex=.12+airT*(.3+1.4*(i.airTuck||0)+(i.grab?.3:0)-.22*(i.airExt||0));
  flex=clamp(flex,0,i.air?2.1:1); // a real tuck draws the knees well up toward the chest
  // --- torso (negative pitch = folded forward)
- let tp=(i.board?.02+.08*glide+.3*flex:.04+.16*glide+.45*flex)+i.push*(.08+.26*(1-u));
+ let tp=(i.board?.02+.08*glide+.3*flex:.1+.2*glide+.5*flex)+i.push*(.08+.26*(1-u));
  tp=lerp(tp,.95,i.tuck);
  if(i.air)tp=.1+airT*(.25+.5*(i.airTuck||0)+(i.grab?.3:0)-.2*(i.airExt||0));
  const torsoPitch=-clamp(tp,0,1.05);
  const torsoYaw=i.fakie&&skis&&!i.air?.55:-i.edge*(skis?.12:.05);
  const torsoRoll=-i.edge*(skis?.19:.14);
  // --- arms
- const idle:Arm={pitch:.42,out:.12,elbow:.75,twist:0},run:Arm={pitch:.55,out:.12,elbow:.95,twist:0};
+ const idle:Arm={pitch:.5,out:.3,elbow:.8,twist:0},run:Arm={pitch:.62,out:.38,elbow:1.0,twist:0};
  let A=mixArm(idle,run,glide);
  if(skis){
   A=mixArm(A,{pitch:lerp(-.18,.88,u),out:.22,elbow:lerp(.22,.75,u),twist:0},i.push);   // double-poling: drive back, swing forward
@@ -69,9 +69,9 @@ export function computePose(i:PoseIn):PoseOut{
  if(i.air){poleTilt=lerp(poleTilt,1.25,airT);polePlant=lerp(polePlant,0,airT);poleOut=lerp(poleOut,.2,airT);}
  if(i.rail){poleTilt=1;polePlant=0;}
  // --- stance
- const stance=skis?.2-.03*glide+i.skid*.04:.38,footYaw:[number,number]=skis?[0,0]:[.15,-.3];
+ const stance=skis?.3-.02*glide+i.skid*.06+.04*Math.abs(i.edge):.38,footYaw:[number,number]=skis?[0,0]:[.15,-.3];
  const e=Math.abs(i.edge);
- const out:PoseOut={flex,hipBack:(skis?.22*flex+.12*i.tuck:.12*flex),hipSide:-i.edge*.14,
+ const out:PoseOut={flex,hipBack:(skis?.3*flex+.12*i.tuck:.12*flex),hipSide:-i.edge*.14,
   torsoPitch,torsoYaw,torsoRoll,armL:clampArm(armL),armR:clampArm(armR),
   poleTilt,poleOut,polePlant:clamp(polePlant,0,1),stance,footYaw,insideLift:skis&&!i.air?.03*e:0,insideLead:skis&&!i.air?.12*e:0,
   skate:i.board&&!i.air?i.push:0,skateU:u};

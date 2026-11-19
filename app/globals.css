@@ -354,3 +354,5 @@ kbd{font:700 11px var(--disp);letter-spacing:.8px;color:var(--ink);padding:2px 7
 @keyframes popup{0%{opacity:0;transform:translate(-50%,16px) scale(.8)}12%{opacity:1;transform:translate(-50%,0) scale(1.06)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-30px)}}
 .stance-chip{position:absolute;left:50%;bottom:230px;transform:translateX(-50%);padding:3px 16px;background:var(--accent);color:#fff;font:900 italic 14px var(--disp);letter-spacing:4px;clip-path:var(--card);--cut:6px;pointer-events:none}
 .balance{position:absolute;left:50%;bottom:260px;transform:translateX(-50%);width:200px;height:6px;background:#ffffff2e;pointer-events:none}.balance:before{content:"";position:absolute;left:36%;right:36%;top:-2px;bottom:-2px;background:#27d17f55}.balance i{position:absolute;top:-5px;width:6px;height:16px;background:#fff;transform:translateX(-50%)}
+
+.controls-hint{animation:hintfade 1s 14s forwards;opacity:.85}@keyframes hintfade{to{opacity:0}}
