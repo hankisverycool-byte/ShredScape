@@ -1,66 +1,114 @@
 [
-  {
-    "title": "Low Poly Snowy Trees \u2013 Free Asset Pack",
-    "author": "PeToDes",
-    "source": "https://sketchfab.com/3d-models/low-poly-snowy-trees-free-asset-pack-adefaac7a0f84e8e93a36778648dcafd",
-    "license": "CC BY 4.0",
-    "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Separated six variants, resized and placed across Frostpeak."
-  },
-  {
-    "title": "Snowboard with the name eli",
-    "author": "rylanlucyk",
-    "source": "https://sketchfab.com/3d-models/snowboard-with-the-name-eli-9aac773fe6c34bf7b50ee2c89c5cb98a",
-    "license": "CC BY 4.0",
-    "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Centered, resized and attached to the animated rider."
-  },
-  {
-    "title": "Low-Poly Freeride Skis",
-    "author": "Romainhj",
-    "source": "https://sketchfab.com/3d-models/low-poly-freeride-skis-8b27a5ff5c6f436ab18d6d1d5862aeb5",
-    "license": "CC BY 4.0",
-    "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Removed display transforms, resized, and connected the skis to a glide animation."
-  },
-  {
-    "title": "Low-Poly Person .Blend Low Poly FREE",
-    "author": "LordSamueliSolo / LadyLionStudios",
-    "source": "https://sketchfab.com/3d-models/low-poly-person-blend-low-poly-free-9db9976c63b546c790ca74675f4faabc",
-    "license": "CC BY-NC 4.0",
-    "url": "https://creativecommons.org/licenses/by-nc/4.0/",
-    "changes": "Selected the clothed figure, removed its backdrop, resized and added a procedural skeleton. Jacket, trousers and hair are recolored. Noncommercial use only."
-  },
-  {
-    "title": "Prototype ski helmet speakers",
-    "author": "timodijker",
-    "source": "https://sketchfab.com/3d-models/prototype-ski-helmet-speakers-e1a43296b2cc4e36ad0667a06fccae4c",
-    "license": "CC BY 4.0",
-    "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Reduced to about 17k vertices and smoothed, turned to face forward, resized to the rider's head, and recoloured per design with painted stripes and side marks."
-  },
-  {
-    "title": "6b34 (ski goggles)",
-    "author": "mickeymoose1204",
-    "source": "https://sketchfab.com/3d-models/6b34-a3b734b72c654462b936dcf877771010",
-    "license": "CC BY 4.0",
-    "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Kept the frame and lens only, reduced to about 3.6k vertices, resized to the helmet and recoloured per kit; the strap is generated in code."
-  },
-  {
-    "title": "Low Poly Winter Village",
-    "author": "I'm blendin' it",
-    "source": "https://sketchfab.com/3d-models/low-poly-winter-village-5abe872cf7e34afb8d1c2b47cc7b4fe6",
-    "license": "CC BY 4.0",
-    "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Kept the four houses, merged each to one mesh per material, centred and resized them, and placed them in the villages and lodges."
-  },
-  {
-    "title": "Low Poly Mountain Free",
-    "author": "Poly Craftsman",
-    "source": "https://sketchfab.com/3d-models/low-poly-mountain-free-dabda46f9be2416c93a4b584be17786b",
-    "license": "CC BY 4.0",
-    "url": "https://creativecommons.org/licenses/by/4.0/",
-    "changes": "Centred, resized and repeated as the distant mountain ranges."
-  }
+ {
+  "title": "Low Poly Snowy Trees \u2013 Free Asset Pack",
+  "author": "PeToDes",
+  "source": "https://sketchfab.com/3d-models/low-poly-snowy-trees-free-asset-pack-adefaac7a0f84e8e93a36778648dcafd",
+  "license": "CC BY 4.0",
+  "url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Separated six variants, resized and placed across Frostpeak."
+ },
+ {
+  "title": "Snowboard with the name eli",
+  "author": "rylanlucyk",
+  "source": "https://sketchfab.com/3d-models/snowboard-with-the-name-eli-9aac773fe6c34bf7b50ee2c89c5cb98a",
+  "license": "CC BY 4.0",
+  "url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Centered, resized and attached to the animated rider."
+ },
+ {
+  "title": "Low-Poly Freeride Skis",
+  "author": "Romainhj",
+  "source": "https://sketchfab.com/3d-models/low-poly-freeride-skis-8b27a5ff5c6f436ab18d6d1d5862aeb5",
+  "license": "CC BY 4.0",
+  "url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Removed display transforms, resized, and connected the skis to a glide animation."
+ },
+ {
+  "title": "Low-Poly Person .Blend Low Poly FREE",
+  "author": "LordSamueliSolo / LadyLionStudios",
+  "source": "https://sketchfab.com/3d-models/low-poly-person-blend-low-poly-free-9db9976c63b546c790ca74675f4faabc",
+  "license": "CC BY-NC 4.0",
+  "url": "https://creativecommons.org/licenses/by-nc/4.0/",
+  "changes": "Selected the clothed figure, removed its backdrop, resized and added a procedural skeleton. Jacket, trousers and hair are recolored. Noncommercial use only."
+ },
+ {
+  "title": "Prototype ski helmet speakers",
+  "author": "timodijker",
+  "source": "https://sketchfab.com/3d-models/prototype-ski-helmet-speakers-e1a43296b2cc4e36ad0667a06fccae4c",
+  "license": "CC BY 4.0",
+  "url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Reduced to about 17k vertices and smoothed, turned to face forward, resized to the rider's head, and recoloured per design with painted stripes and side marks."
+ },
+ {
+  "title": "6b34 (ski goggles)",
+  "author": "mickeymoose1204",
+  "source": "https://sketchfab.com/3d-models/6b34-a3b734b72c654462b936dcf877771010",
+  "license": "CC BY 4.0",
+  "url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Kept the frame and lens only, reduced to about 3.6k vertices, resized to the helmet and recoloured per kit; the strap is generated in code."
+ },
+ {
+  "title": "Low Poly Winter Village",
+  "author": "I'm blendin' it",
+  "source": "https://sketchfab.com/3d-models/low-poly-winter-village-5abe872cf7e34afb8d1c2b47cc7b4fe6",
+  "license": "CC BY 4.0",
+  "url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Kept the four houses, merged each to one mesh per material, centred and resized them, and placed them in the villages and lodges."
+ },
+ {
+  "title": "Low Poly Mountain Free",
+  "author": "Poly Craftsman",
+  "source": "https://sketchfab.com/3d-models/low-poly-mountain-free-dabda46f9be2416c93a4b584be17786b",
+  "license": "CC BY 4.0",
+  "url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Centred, resized and repeated as the distant mountain ranges."
+ },
+ {
+  "title": "Fir Tree 01",
+  "author": "Rob Tuytel, Rico Cilliers (Poly Haven)",
+  "source": "https://polyhaven.com/a/fir_tree_01",
+  "license": "CC0 1.0",
+  "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "changes": "Rendered three variants to alpha sprites, used as crossed cards."
+ },
+ {
+  "title": "Rock 07",
+  "author": "Poly Haven",
+  "source": "https://polyhaven.com/a/rock_07",
+  "license": "CC0 1.0",
+  "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "changes": "Decimated to ~1.8k triangles, textures resized."
+ },
+ {
+  "title": "Rock 09",
+  "author": "Poly Haven",
+  "source": "https://polyhaven.com/a/rock_09",
+  "license": "CC0 1.0",
+  "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "changes": "Decimated to ~1.5k triangles, textures resized."
+ },
+ {
+  "title": "Rock Face 01",
+  "author": "Poly Haven",
+  "source": "https://polyhaven.com/a/rock_face_01",
+  "license": "CC0 1.0",
+  "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "changes": "Decimated to ~2.4k triangles, textures resized."
+ },
+ {
+  "title": "Snow 02 (normal and roughness maps)",
+  "author": "Poly Haven",
+  "source": "https://polyhaven.com/a/snow_02",
+  "license": "CC0 1.0",
+  "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "changes": "Tiled across the terrain."
+ },
+ {
+  "title": "HDRIs: Horn-Koppe Snow, Passendorf Snow, Rural Winter Roadside, Qwantani Night",
+  "author": "Poly Haven contributors",
+  "source": "https://polyhaven.com/hdris",
+  "license": "CC0 1.0",
+  "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "changes": "Used for sky and image-based lighting."
+ }
 ]

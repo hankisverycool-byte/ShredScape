@@ -11,12 +11,17 @@ function logoTexture(b:Brand){let t=logos.get(b);if(!t){const c=document.createE
 
 type Template = T.Group;
 export function createModelAssets(onReady:()=>void){
- const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;const houses:Template[]=[];let mountainParts:{geo:T.BufferGeometry;mat:T.Material}[]=[];let goggleParts:{frame:T.BufferGeometry;lens:T.BufferGeometry}|null=null;let helmetParts:{shell:T.BufferGeometry;liner:T.BufferGeometry|null;pads:T.BufferGeometry|null}|null=null;const paintCache=new Map<string,T.BufferGeometry>();
+ const loader=new GLTFLoader(),trees:Template[]=[],realTrees:Template[]=[],rocks:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;const houses:Template[]=[];let mountainParts:{geo:T.BufferGeometry;mat:T.Material}[]=[];let goggleParts:{frame:T.BufferGeometry;lens:T.BufferGeometry}|null=null;let helmetParts:{shell:T.BufferGeometry;liner:T.BufferGeometry|null;pads:T.BufferGeometry|null}|null=null;const paintCache=new Map<string,T.BufferGeometry>();
  const resources=new Set<T.BufferGeometry|T.Material|T.Texture>();
  function track(g:T.Object3D){g.traverse(o=>{if(o instanceof T.Mesh){resources.add(o.geometry);o.geometry.userData.assetShared=true;for(const m of Array.isArray(o.material)?o.material:[o.material]){resources.add(m);m.userData.assetShared=true;for(const value of Object.values(m))if(value instanceof T.Texture)resources.add(value);}}});}
  function bake(mesh:T.Mesh,matrix=mesh.matrixWorld){const out=new T.Mesh(mesh.geometry.clone().applyMatrix4(matrix),mesh.material);out.name=mesh.name;out.castShadow=true;out.receiveShadow=true;return out;}
  function fit(group:T.Group,size:number,axis:'x'|'y'|'z'){const box=new T.Box3().setFromObject(group),center=box.getCenter(new T.Vector3()),scale=size/box.getSize(new T.Vector3())[axis];for(const m of group.children as T.Mesh[]){m.geometry.translate(-center.x,-box.min.y,-center.z);m.geometry.scale(scale,scale,scale);}track(group);return group;}
  async function load(url:string,prepare:(scene:T.Group)=>void){try{const gltf=await loader.loadAsync(url);if(disposed){gltf.scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});return;}gltf.scene.updateMatrixWorld(true);track(gltf.scene);prepare(gltf.scene);onReady();}catch(e){console.warn('Model could not load; using built-in fallback.',url,e);}}
+ // Poly Haven CC0 scans (fir tree, fir sapling, rocks), decimated for the web: normalised to a real-world height/width with the base at y=0.
+ // Photoreal fir trees: Poly Haven CC0 scans (fir_tree_01 a/b/c) rendered to alpha sprites and stood up as two crossed cards (real height, in scene metres).
+ for(const [i,h,w] of [[0,19.5,9.7],[1,14.5,7.2],[2,15,7.5]] as const){const mats=[0,90].map(d=>{const t=new T.TextureLoader().load(`/models/fir${i}_${d}.webp`);t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;t.generateMipmaps=true;return new T.MeshStandardMaterial({map:t,alphaTest:.5,side:T.DoubleSide,roughness:.95,metalness:0,envMapIntensity:.7});});
+  const g=new T.Group(),geo=new T.PlaneGeometry(w,h);geo.translate(0,h/2,0);const a=new T.Mesh(geo,mats[0]),b=new T.Mesh(geo,mats[1]);b.rotation.y=Math.PI/2;g.add(a,b);for(const m of mats){m.userData.assetShared=true;resources.add(m);}geo.userData.assetShared=true;resources.add(geo);realTrees.push(g);}
+ for(const f of ['rock-a','rock-b','rock-c'])void load('/models/'+f+'.glb',scene=>{const g=new T.Group();scene.traverse(o=>{if(o instanceof T.Mesh)g.add(bake(o));});rocks.push(fit(g,2.4,'x'));});
  void load('/models/snowy-trees.glb',scene=>{scene.traverse(o=>{if(o instanceof T.Mesh){const g=new T.Group();g.add(bake(o));trees.push(fit(g,5,'y'));}});});
  // Village houses (CC BY 4.0, see model-credits): four houses, each merged to one mesh per material and centred with its base at y=0.
  void load('/models/village-houses.glb',scene=>{for(const grp of scene.children)if(grp.name.startsWith('House'))houses.push(grp as Template);});
@@ -75,8 +80,9 @@ export function createModelAssets(onReady:()=>void){
   g.setAttribute('color',new T.Float32BufferAttribute(col,3));paintCache.set(key,g);return g;}
  function clone(template:Template|null){return template?.clone(true)||null;}
  return{
-  tree(seed:number){return trees.length?clone(trees[Math.abs(Math.floor(seed))%trees.length]):null;},
+  tree(seed:number){if(realTrees.length){const k=Math.abs(Math.floor(seed));const t=clone(realTrees[k%realTrees.length])!;t.rotation.y=(k%13)*.5;return t;}return trees.length?clone(trees[Math.abs(Math.floor(seed))%trees.length]):null;},
   snowboard(){return clone(board);},ski(){return clone(skis);},
+  rock(i:number){return rocks.length?clone(rocks[Math.abs(Math.floor(i))%rocks.length]):null;},
   house(i:number){return houses.length?clone(houses[Math.abs(Math.floor(i))%houses.length]):null;},houseCount:()=>houses.length,
   mountain(){if(!mountainParts.length)return null;const g=new T.Group();for(const p of mountainParts){const m=new T.Mesh(p.geo,p.mat);m.castShadow=false;g.add(m);}return g;},
   rider(outfit:Outfit){
