@@ -21,7 +21,7 @@ function nearby(x:number,y:number):Feature[]{const out=featuresNear(x,y);for(con
 export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>void){
  const mountain=createMountain3D(canvas);let outfit:Outfit={jacket:'#bb633e',pants:'#303e43',hat:'#343c40',gear:'snowboard'};
  let x=START.x,y=START.y,z=0,vz=0,vx=0,vy=0,course=0,fakie=false,lift=0,rail:Feature|null=null,kicker:Feature|null=null,edge=0,skid=0,absorb=0,backseat=0,snow:Snow='groomed',speed=0,angle=0,score=0,best=0,combo=0,multiplier=1,clock=0,bail=0,grace=1,totalDistance=0,creditsEarned=0;
- const STEP=1/120;let surfPrev=0,vsPrev=0,surfOk=false,barrierHit=false,acc=0,grabReach=.1,freezeAir=false;
+ const STEP=1/120;let landSeq=0,landYaw=0,surfPrev=0,vsPrev=0,surfOk=false,barrierHit=false,acc=0,grabReach=.1,freezeAir=false;
  let respawns=0,respawnName='',peakAir=0,crossAmt=0,scissorAmt=0,lastSpeedFeat=-9,hour=9,swivel=0,lastRailEnd=-99,chain=0,charge=0,charging=false,back=false,playing=false,destroyed=false,raf=0,last=performance.now(),pub=0,featureTime=0,jumpCooldown=0,bankTime=0,pushPhase=0,pushPower=0,tuck=0;
  let trick='Choose your own line.',landing='',view='start',settings:GameSettings={quality:'high',fov:65,sensitivity:1,cameraDistance:10};
  // Time of day: one game hour per real minute from 7:00 to 19:00, then it wraps (dusk and dawn light match, so the loop is seamless). Snow warms up and goes soft from about 11:00 to 16:00.
@@ -116,7 +116,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
   const sl=slopeAlong(),impact=Math.max(0,-vz-speed*Math.max(0,sl)),steep=Math.max(0,Math.min(1,sl*5));
   absorb=Math.max(absorb,Math.min(1,impact/(230+300*steep))); // knee compression: more impact, deeper squat; steeper transitions need less
   if(res.clean||res.sketchy){feat('land',1);if(!fromRail)feat('air',peakAir);}
-  if(!fromRail)angle-=L.grade==='crash'?L.yaw:Math.round(L.yaw/Math.PI)*Math.PI;
+  if(!fromRail){const applied=L.grade==='crash'?L.yaw:Math.round(L.yaw/Math.PI)*Math.PI;angle-=applied;landYaw=applied;landSeq++;} // the renderer takes the same yaw out of the body, so the rider does not spin back after a switch landing
   z=0;vz=0;jumpCooldown=.25;gt.kind='';
   if(!fromRail&&L.grade!=='crash'){intendedSwitch=Math.cos(angle-course)<-.3;}
   const danger=impact/260+speed/520;
@@ -218,7 +218,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
   // Coming down onto a rail: lock on. The spin so far becomes your stance on the rail; an unfinished flip still wipes out.
   const r=vz<0?features.find(f=>f.kind==='rail'&&onRail(f,x,y,4)&&z<=railShape(f).height+3):undefined;
   if(r){const L=judgeLanding(tricks);
-   if(L.tilt>.95)wipeout(false,'edge');else{const deg=Math.round(Math.abs(tricks.spin)/(Math.PI/2))*90;tricks={...tricks,q:{x:0,y:0,z:0,w:1},grinding:true,railEntry:deg>=270?(Math.sign(tricks.spin)*NATURAL>0?'Frontside ':'Backside ')+deg+' on':undefined};angle-=L.yaw;rail=r;linkIn();if(clock-lastRailEnd<1.2&&Math.abs(r.x-railX)>10)tricks.transfers=(tricks.transfers||0)+1;lift=railShape(r).height;z=0;vz=0;grace=1;spray(6);}}
+   if(L.tilt>.95)wipeout(false,'edge');else{const deg=Math.round(Math.abs(tricks.spin)/(Math.PI/2))*90;tricks={...tricks,q:{x:0,y:0,z:0,w:1},grinding:true,railEntry:deg>=270?(Math.sign(tricks.spin)*NATURAL>0?'Frontside ':'Backside ')+deg+' on':undefined};angle-=L.yaw;landYaw=L.yaw;landSeq++;rail=r;linkIn();if(clock-lastRailEnd<1.2&&Math.abs(r.x-railX)>10)tricks.transfers=(tricks.transfers||0)+1;lift=railShape(r).height;z=0;vz=0;grace=1;spray(6);}}
  else{
    // The kicker face is the floor while airborne: jump off it early and you come down on it again.
    let fl=0,ff:Feature|null=null;for(const f of features)if(f.kind==='ramp'){const l=kickerSurface(f,x,y);if(l>fl){fl=l;ff=f;}}
@@ -239,7 +239,7 @@ export function createGame(canvas:HTMLCanvasElement,onUpdate:(s:GameSnapshot)=>v
  }
  // Physics runs on a fixed 120 Hz timestep whatever the frame rate, so tricks, collisions and landings behave the same at 20 fps and at 240.
  function frame(now:number){if(destroyed)return;const dt=Math.min(.1,(now-last)/1000);last=now;acc+=dt;let steps=0;while(acc>=STEP&&steps<8){update(STEP);acc-=STEP;steps++;}if(steps===8)acc=0;{const air=z>0;if(air&&!wasAir)lastEvent=clock;if(!air&&wasAir)hintUntil=clock+8;if(bail>0&&!wasBailed){lastEvent=clock;hintUntil=clock+8;}wasAir=air;wasBailed=bail>0;}
- const fr={x,y,z,lift,rail:!!rail,angle,speed,clock,bail,course,fakie,edge,skid,absorb,backseat,snow,tuck:playing&&z===0&&!bail?tuck:0,pushPhase,pushPower:playing&&z===0&&!bail?pushPower:0,spin:tricks.spin,flip:tricks.flip,grab:pressed.has('grab')&&z>0?1:0,playing,outfit,features,peers:visualPeers,particles,view,settings,hour,soft:softness(),cross:crossAmt,scissor:scissorAmt,grabStyle:grabIdx,tuckAmt:tricks.tuck,extAmt:pressed.has('jump')&&z>0?1:0,qx:tricks.q.x,qy:tricks.q.y,qz:tricks.q.z,qw:tricks.q.w,roll:tricks.roll,gtKind:gt.kind,gtAmt:gt.amt,balance,stumble,edgeAngle,crash:bail>0?crash:null,stance:intendedSwitch?1:0};
+ const fr={x,y,z,lift,rail:!!rail,angle,speed,clock,bail,course,fakie,edge,skid,absorb,backseat,snow,tuck:playing&&z===0&&!bail?tuck:0,pushPhase,pushPower:playing&&z===0&&!bail?pushPower:0,spin:tricks.spin,flip:tricks.flip,grab:pressed.has('grab')&&z>0?1:0,playing,outfit,features,peers:visualPeers,particles,view,settings,hour,soft:softness(),cross:crossAmt,scissor:scissorAmt,grabStyle:grabIdx,tuckAmt:tricks.tuck,extAmt:pressed.has('jump')&&z>0?1:0,landSeq,landYaw,qx:tricks.q.x,qy:tricks.q.y,qz:tricks.q.z,qw:tricks.q.w,roll:tricks.roll,gtKind:gt.kind,gtAmt:gt.amt,balance,stumble,edgeAngle,crash:bail>0?crash:null,stance:intendedSwitch?1:0};
  if(rp)mountain.draw({...sampleAt(rp.clip,rp.rt),settings,view,outfit,cam:{mode:CAMS[rp.cut%CAMS.length],id:rp.cutId,t:rp.rt}} as never);else{
   if(playing&&clock-lastRec>=1/30){lastRec=clock;hist.push({t:clock,f:{...fr,particles:particles.slice(0,80).map(p=>({x:p.x,y:p.y,z:p.z,size:p.size,life:p.life}))},m:{trick,landing,combo,mult:multiplier,bail:bail>0,score}});while(hist.length&&hist[0].t<clock-22)hist.shift();}
   const out=mountain.draw(fr) as {grabErr:number}|undefined;if(out&&out.grabErr>=0)grabReach+=(out.grabErr-grabReach)*.3;else grabReach=.1;}

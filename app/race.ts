@@ -2,14 +2,14 @@ import {trailById,trailX} from './world';
 
 // Spar Gulch GS: a timed giant-slalom run down Aspen Mountain's Spar Gulch. Riders travel toward +y (downhill).
 export type Gate={x:number;y:number;w:number;kind:'start'|'gate'|'finish';n:number};
-const SPAR=trailById('spar-gulch'),START=300,FINISH=2500,GATES=8,STEP=(FINISH-START)/(GATES+1);
+const SPAR=trailById('spar-gulch'),START=700,FINISH=2600,GATES=8,STEP=(FINISH-START)/(GATES+1);
 const cx=(y:number)=>trailX(SPAR,y)??0;
 export const COURSE:{name:string;start:Gate;gates:Gate[]}={
  name:'Spar Gulch GS',
- start:{x:cx(START),y:START,w:480,kind:'start',n:0},
+ start:{x:cx(START),y:START,w:320,kind:'start',n:0},
  // Gates alternate either side of the trail line so the run needs real turns. The last "gate" is the finish.
  gates:[...Array.from({length:GATES},(_,i)=>{const y=START+(i+1)*STEP;return{x:cx(y)+(i%2?100:-100),y,w:190,kind:'gate' as const,n:i+1};}),
-  {x:cx(FINISH),y:FINISH,w:600,kind:'finish',n:GATES+1}],
+  {x:cx(FINISH),y:FINISH,w:420,kind:'finish',n:GATES+1}],
 };
 export const MISS_PENALTY=2;
 export type Best={total:number;splits:number[]};

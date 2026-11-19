@@ -60,11 +60,11 @@ export const LOCATIONS:Location[]=[
 ];
 export const START={x:0,y:350};
 // Flat pads so every arrival point is a place you can stand still.
-const FLATS:{x:number;y:number;r:number;drop:number;h:number}[]=[...LOCATIONS.map(l=>({x:l.x,y:l.y,r:l.kind==='park'?110:150,drop:0,h:0}))];
+const FLATS:{x:number;y:number;bw:number;r:number;drop:number;h:number}[]=[...LOCATIONS.map(l=>({x:l.x,y:l.y,r:l.kind==='park'?110:l.kind==='summit'?60:150,drop:0,h:0,bw:l.kind==="summit"?90:220}))];
 for(const f of FLATS)f.h=raw(f.x,f.y)+f.drop;
 export function groundHeight(x:number,y:number){
  let h=raw(x,y);
- for(const f of FLATS){const d=Math.hypot(x-f.x,y-f.y);if(d<f.r+220){const m=1-smooth(f.r*.55,f.r+220,d);h+=(f.h-h)*m;}}
+ for(const f of FLATS){const d=Math.hypot(x-f.x,y-f.y);if(d<f.r+f.bw){const m=1-smooth(f.r*.55,f.r+f.bw,d);h+=(f.h-h)*m;}}
  return h;
 }
 export function regionAt(x:number,y:number){const z=zoneAt(x,y);return z?z.name:mountainAt(x).name;}
@@ -98,7 +98,7 @@ export function snowAt(x:number,y:number):'groomed'|'powder'|'ice'{return onTrai
 // ---------- landmarks and lifts ----------
 export type Landmark={kind:'village'|'lodge'|'parkgate'|'lake';x:number;y:number;name:string;count?:number;r?:number};
 export const LANDMARKS:Landmark[]=[
- {kind:'village',x:0,y:17420,name:'ASPEN',count:12},{kind:'village',x:-1050,y:16700,name:'SNOWMASS VILLAGE',count:6},{kind:'village',x:1050,y:16700,name:'HIGHLANDS BASE',count:3},
+ {kind:'village',x:0,y:17420,name:'ASPEN',count:9},{kind:'village',x:-1050,y:16700,name:'SNOWMASS VILLAGE',count:5},{kind:'village',x:1050,y:16700,name:'HIGHLANDS BASE',count:3},
  {kind:'lodge',x:850,y:430,name:'SUNDECK'},{kind:'lodge',x:-850,y:1500,name:'ELK CAMP'},
  ...PARKS.map(z=>({kind:'parkgate' as const,x:(z.x0+z.x1)/2,y:z.y0+30,name:z.name.toUpperCase(),r:(z.x1-z.x0)/2})),
 ];

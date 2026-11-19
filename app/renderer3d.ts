@@ -9,26 +9,29 @@ import {solveLeg,type Rig,type Leg} from './rig';
 import type {Outfit,Peer,GameSettings} from './game-engine';
 import {groundHeight,LANDMARKS,LIFTS,BOUNDS,BARRIER_X,WORLD_X,onTrail,zoneAt,forestAt,type Lift} from './world';
 type Feature={kind:string;x:number;y:number;size:number;id:string;seed:number};
-type Frame={qx?:number;qy?:number;qz?:number;qw?:number;tuckAmt?:number;extAmt?:number;gtKind?:string;gtAmt?:number;balance?:number;stumble?:number;edgeAngle?:number;crash?:{kind:string;fx:number;fy:number;power:number;lean:number;side:number;tilt:number}|null;cross?:number;scissor?:number;grabStyle?:number;hour?:number;soft?:number;cam?:{mode:string;id:number;t:number};tuck?:number;lift?:number;rail?:boolean;fakie?:boolean;course?:number;edge?:number;skid?:number;absorb?:number;backseat?:number;snow?:string;view:string;settings:GameSettings;x:number;y:number;z:number;angle:number;speed:number;pushPhase:number;pushPower:number;clock:number;bail:number;spin:number;flip:number;grab:number;playing:boolean;outfit:Outfit;features:Feature[];peers:Peer[];particles:{x:number;y:number;z:number;size:number;life:number}[]};
+type Frame={landSeq?:number;landYaw?:number;qx?:number;qy?:number;qz?:number;qw?:number;tuckAmt?:number;extAmt?:number;gtKind?:string;gtAmt?:number;balance?:number;stumble?:number;edgeAngle?:number;crash?:{kind:string;fx:number;fy:number;power:number;lean:number;side:number;tilt:number}|null;cross?:number;scissor?:number;grabStyle?:number;hour?:number;soft?:number;cam?:{mode:string;id:number;t:number};tuck?:number;lift?:number;rail?:boolean;fakie?:boolean;course?:number;edge?:number;skid?:number;absorb?:number;backseat?:number;snow?:string;view:string;settings:GameSettings;x:number;y:number;z:number;angle:number;speed:number;pushPhase:number;pushPower:number;clock:number;bail:number;spin:number;flip:number;grab:number;playing:boolean;outfit:Outfit;features:Feature[];peers:Peer[];particles:{x:number;y:number;z:number;size:number;life:number}[]};
 const S=.05;
 const hash=(n:number)=>{const k=Math.sin(n*127.1+311.7)*43758.5453;return k-Math.floor(k);};
-const ground=groundHeight;
+// Heights are drawn in scene metres. Engine heights are in engine units (the same scale as x and y), so a metre of scene height is groundHeight*S; VERT exaggerates the
+// terrain relief a little (a true 1-3% run would look flat) while everything the rider touches (skis, kickers, jump heights) stays in true proportion to the rider.
+const VERT=6;
+const ground=(x:number,y:number)=>groundHeight(x,y)*S*VERT;
 export function createMountain3D(canvas:HTMLCanvasElement){
  const renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor('#accbd2');
  let assetRevision=0,seenAssetRevision=0;const models=createModelAssets(()=>assetRevision++);
  // Daylight by hour (7:00 and 19:00 match, so the cycle loops without a jump): warm low sun at the ends, bright white at midday, gold in the afternoon.
  const KEYS:{h:number;sky:string;hemi:string;hemiI:number;sun:string;sunI:number}[]=[
-  {h:7,sky:'#cfb4b0',hemi:'#f2dcd6',hemiI:1.5,sun:'#ffb283',sunI:1.2},{h:9,sky:'#b6d3dc',hemi:'#e9faff',hemiI:2.05,sun:'#ffe6bd',sunI:2.2},
-  {h:12.5,sky:'#accbd2',hemi:'#e9faff',hemiI:2.3,sun:'#fff7e6',sunI:2.8},{h:16,sky:'#c3d0cd',hemi:'#f7efdc',hemiI:2.0,sun:'#ffd28f',sunI:2.35},
+  {h:7,sky:'#cfb4b0',hemi:'#f2dcd6',hemiI:1.5,sun:'#ffb283',sunI:1.2},{h:9,sky:'#b6d3dc',hemi:'#e9faff',hemiI:2.05,sun:'#fff0dd',sunI:2.2},
+  {h:12.5,sky:'#accbd2',hemi:'#e9faff',hemiI:2.3,sun:'#fffaf0',sunI:2.8},{h:16,sky:'#bfd0da',hemi:'#eef4fa',hemiI:2.0,sun:'#ffe6c4',sunI:2.35},
   {h:18,sky:'#d4b4a6',hemi:'#f4dad0',hemiI:1.6,sun:'#ff9d68',sunI:1.6},{h:19,sky:'#cfb4b0',hemi:'#f2dcd6',hemiI:1.5,sun:'#ffb283',sunI:1.2}];
  const cA=new T.Color(),cB=new T.Color(),LIGHT={sky:new T.Color(),hemiSky:new T.Color(),sun:new T.Color(),hemi:2,sunI:2,dx:25,dy:45};
  function light(h:number){let i=0;while(i<KEYS.length-2&&h>KEYS[i+1].h)i++;const a=KEYS[i],b=KEYS[i+1],u=Math.max(0,Math.min(1,(h-a.h)/(b.h-a.h)));
   LIGHT.sky.copy(cA.set(a.sky).lerp(cB.set(b.sky),u));LIGHT.hemiSky.copy(cA.set(a.hemi).lerp(cB.set(b.hemi),u));LIGHT.sun.copy(cA.set(a.sun).lerp(cB.set(b.sun),u));
   LIGHT.hemi=a.hemiI+(b.hemiI-a.hemiI)*u;LIGHT.sunI=a.sunI+(b.sunI-a.sunI)*u;const t=(h-7)/12;LIGHT.dx=Math.cos(Math.PI*(1-t))*45;LIGHT.dy=14+34*Math.sin(Math.PI*t);return LIGHT;}
- const scene=new T.Scene();scene.fog=new T.Fog('#accbd2',160,560);
- const camera=new T.PerspectiveCamera(57,1,.1,1200);
- const hemi=new T.HemisphereLight('#e9faff','#607368',2.2);scene.add(hemi);
+ const scene=new T.Scene();scene.fog=new T.Fog('#accbd2',200,1300);
+ const camera=new T.PerspectiveCamera(57,1,.1,3200);
+ const hemi=new T.HemisphereLight('#e9faff','#8aa3b9',2.2);scene.add(hemi);
  const sun=new T.DirectionalLight('#ffe9b9',2.5);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-35;sun.shadow.camera.right=35;sun.shadow.camera.top=35;sun.shadow.camera.bottom=-35;sun.shadow.camera.far=120;sun.shadow.bias=-.001;scene.add(sun,sun.target);
  const materials=new Map<string,T.MeshStandardMaterial>();
  function mat(c:string){if(!materials.has(c))materials.set(c,new T.MeshStandardMaterial({color:c,roughness:1,flatShading:true}));return materials.get(c)!;}
@@ -40,7 +43,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  function cabin(parent:T.Object3D){box(parent,'#856448',0,1.5,0,7,3,5);box(parent,'#af8c61',0,.3,2.8,8,.6,1.4);const roof=mesh(new T.CylinderGeometry(0,5,2.4,4), '#dce8df',parent,[0,4,0],[1.15,1,.85]);roof.rotation.y=Math.PI/4;box(parent,'#423e35',0,1,2.54,1.1,2,.12);for(const x of [-2.2,2.2]){box(parent,'#f5cf78',x,1.7,2.55,1.1,1,.12);box(parent,'#433c30',x,1.7,2.65,.1,1,.1);}box(parent,'#716e60',2,4.5,-1,.65,2,.65);}
  function sign(parent:T.Object3D,title:string){box(parent,'#897352',0,1.5,0,.18,3,.18);const l=label(title);l.position.set(0,3,0);parent.add(l);}
  const world=new T.Group();scene.add(world);let chunks=new Map<number,T.Group>();let featureMap=new Map<string,T.Group>();
- const C_ON=[new T.Color('#f2f0df'),new T.Color('#e4e9df')],C_PARK=new T.Color('#fbfcf8'),C_OFF=new T.Color('#cbded6'),C_FOREST=new T.Color('#a9c9b7'),C_ROCK=new T.Color('#8f9fa3'),C_ICE=new T.Color('#c3e4ec'),_c=new T.Color();
+ const C_ON=[new T.Color('#eef4fa'),new T.Color('#e3ecf4')],C_PARK=new T.Color('#f7fbff'),C_OFF=new T.Color('#d4e3ef'),C_FOREST=new T.Color('#a9c9b7'),C_ROCK=new T.Color('#8f9fa3'),C_ICE=new T.Color('#c3e4ec'),_c=new T.Color();
  // Terrain chunk: 1000 engine units of mountain, the full width of the world. Colour says what the snow is: groomed, park, off-piste, forest, bare rock on the steeps, ice.
 
 
@@ -49,7 +52,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const snowBump=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d')!,im=g.createImageData(256,256);
   for(let j=0;j<256;j++)for(let i=0;i<256;i++){const v=.5*vn(i/16,j/16)+.3*vn(i/6,j/6)+.2*vn(i/2.2,j/2.2),sp=hash(i*13+j*57)>.985?.35:0,k=Math.max(0,Math.min(255,(v+sp)*255)),o=(j*256+i)*4;im.data[o]=im.data[o+1]=im.data[o+2]=k;im.data[o+3]=255;}
   g.putImageData(im,0,0);const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(110,34);t.anisotropy=4;return t;})();
- const SNOW_SHADE=new T.Color('#bcd2e6'),SNOW_WARM=new T.Color('#fffdf4');
+ const SNOW_SHADE=new T.Color('#a9c4de'),SNOW_WARM=new T.Color('#fafdff');
  // ---- Distant mountains: low-poly ranges rising out of the haze on both sides and at either end of the course. ----
  const peakVariants=[0,1,2,3].map(v=>{const g=new T.ConeGeometry(1,1,7,1,false);const p=g.attributes.position,col:number[]=[],c=new T.Color();
   for(let i=0;i<p.count;i++){const y=p.getY(i);if(y<.49){p.setX(i,p.getX(i)*(1+(hash(i*7+v*31)-.5)*.5));p.setZ(i,p.getZ(i)*(1+(hash(i*11+v*17)-.5)*.5));}p.setY(i,y+(y>.49?(hash(v+3)-.3)*.12:0));
@@ -62,8 +65,8 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   for(const side of [-1,1]){const w=8000,geo=new T.PlaneGeometry(w*S,50,10,12);geo.rotateX(Math.PI/2);const a=geo.attributes.position,cs:number[]=[];
    for(let i=0;i<a.count;i++){const yy=start+(a.getZ(i)+25)/S,gx=side*(WORLD_X+w/2+(a.getX(i)/S)*0),h=ground(side*WORLD_X,yy),k=Math.max(0,Math.min(1,Math.abs(a.getX(i)/S+w/2)/w));a.setY(i,h-k*14*0);a.setX(i,side*(WORLD_X*S+(a.getX(i)+w*S/2)));a.setZ(i,-yy*S);void gx;_c.set('#eef4f6').lerp(_c.clone().set('#d6e3ec'),k);cs.push(_c.r,_c.g,_c.b);}
    geo.setAttribute('color',new T.Float32BufferAttribute(cs,3));geo.computeVertexNormals();const m=new T.Mesh(geo,farMat);m.receiveShadow=false;group.add(m);
-   for(let i=0;i<3;i++){const hs=hash(chunk*53+i*7+(side>0?3:0)),x=side*(6500+hash(hs*91)*3800+i*600),y=start+hash(hs*17)*1000,sc=90+hash(hs*5)*110,mm=models.mountain();
-    if(mm){const w=300+hash(hs*5)*420;mm.position.set(x*S,ground(side*WORLD_X,y)-6,-y*S);mm.scale.set(w,w*1.25,w);mm.rotation.y=hash(hs*9)*6.28;group.add(mm);}
+   for(let i=0;i<3;i++){const hs=hash(chunk*53+i*7+(side>0?3:0)),x=side*(11500+hash(hs*91)*4500+i*900),y=start+hash(hs*17)*1000,sc=90+hash(hs*5)*110,mm=models.mountain();
+    if(mm){const w=260+hash(hs*5)*160;mm.position.set(x*S,ground(side*WORLD_X,y)-6,-y*S);mm.scale.set(w,w*.95,w);mm.rotation.y=hash(hs*9)*6.28;group.add(mm);}
     else{const peak=new T.Mesh(peakVariants[(i+chunk+(side>0?1:0)+4000)%4],peakMat);peak.position.set(x*S,ground(side*WORLD_X,y)+sc*.35,-y*S);peak.scale.set(sc*.95,sc*1.15+hash(hs*3)*50,sc*.95);peak.castShadow=false;group.add(peak);}}}
   if(chunk<=-1||chunk>=17)for(let i=-7;i<=7;i++){const hs=hash(chunk*19+i),y=chunk<=-1?-7500-hash(hs)*1500:BOUNDS.maxY+7500+hash(hs)*1500,sc=110+hash(hs*3)*120,mm=models.mountain(),px=(i*1700+hash(hs*7)*800)*S,gy=ground(0,chunk<=-1?-1000:BOUNDS.maxY);
    if(mm){const w=420+hash(hs*5)*520;mm.position.set(px,gy-6,-y*S);mm.scale.set(w,w*1.3,w);mm.rotation.y=hash(hs*9)*6.28;group.add(mm);}
@@ -90,13 +93,13 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   c.b.instanceMatrix.needsUpdate=true;c.h.instanceMatrix.needsUpdate=true;}
  function makeTerrain(chunk:number){const group=new T.Group(),start=chunk*1000,width=(2*WORLD_X+400)*S;const geo=new T.PlaneGeometry(width,50,170,60);geo.rotateX(Math.PI/2);const a=geo.attributes.position;const cs:number[]=[];
  for(let i=0;i<a.count;i++){const xx=a.getX(i)/S,yy=start+(a.getZ(i)+25)/S,h=ground(xx,yy);a.setY(i,h);a.setZ(i,-yy*S);
-  const steep=Math.hypot(ground(xx+40,yy)-ground(xx-40,yy),ground(xx,yy+40)-ground(xx,yy-40))/80,z=zoneAt(xx,yy);
+  const steep=Math.hypot(groundHeight(xx+40,yy)-groundHeight(xx-40,yy),groundHeight(xx,yy+40)-groundHeight(xx,yy-40))/80,z=zoneAt(xx,yy);
   if(onTrail(xx,yy))_c.copy(z&&z.kind==='park'?C_PARK:C_ON[hash(i+chunk)>.82?1:0]);
   else{_c.copy(C_OFF).lerp(C_FOREST,Math.min(1,forestAt(xx,yy)*1.1));}
   if(steep>.055)_c.lerp(C_ROCK,Math.min(.75,(steep-.055)*9)); // bare rock where it is too steep for snow to stay
   // snow character: fine noise, streaks running downhill, hollows go blue-grey, windswept crests go warm and bright
   {const k=1+.035*(vn(xx*.012,yy*.0035)-.5)+.03*(vn(xx*.05,yy*.012)-.5)+.02*(vn(xx*.2,yy*.05)-.5),cv=(ground(xx+40,yy)+ground(xx-40,yy)+ground(xx,yy+40)+ground(xx,yy-40))/4-h;
-   _c.multiplyScalar(k);if(cv>0)_c.lerp(SNOW_SHADE,Math.min(.22,cv*1.4));else _c.lerp(SNOW_WARM,Math.min(.12,-cv*1.0));}
+   _c.multiplyScalar(k);if(cv>0)_c.lerp(SNOW_SHADE,Math.min(.3,cv*4.5));else _c.lerp(SNOW_WARM,Math.min(.1,-cv*2.5));}
   cs.push(_c.r,_c.g,_c.b);}
  geo.setAttribute('color',new T.Float32BufferAttribute(cs,3));geo.computeVertexNormals();const terrain=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,roughness:.62,metalness:0,bumpMap:snowBump,bumpScale:1.4}));terrain.receiveShadow=true;group.add(terrain);
  const rel=(x:number,y:number,x0:number,y0:number)=>ground(x,y)-ground(x0,y0);
@@ -136,17 +139,21 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  else{box(bar,'#edb957',0,-.05,0,.16,.1,len);for(const zp of [-.42,0,.42])box(bar,'#53665a',0,-h/2,zp*len,.11,h,.11);}
  }
  else if(f.kind==='gate'){
- // GS gate: two poles with panel flags facing in, alternating red/blue.
+ // GS gate: two tall slim poles with a pennant on top (so it can be read from a long way off) and a panel flag facing in, alternating red/blue.
  const half=f.size*S/2,c=f.seed%2?'#d6453b':'#2f6fd1';
- for(const sx of [-half,half]){box(g,'#f4f4ec',sx,.95,0,.06,1.9,.06);box(g,c,sx+(sx<0?.38:-.38),1.5,0,.76,.62,.03);}
+ for(const sx of [-half,half]){box(g,'#f4f4ec',sx,1.6,0,.07,3.2,.07);box(g,c,sx+(sx<0?.5:-.5),2.4,0,1,.8,.03);box(g,c,sx,3.35,0,.5,.3,.03);}
  }else if(f.kind==='start'||f.kind==='finish'){
+ // A normal-sized timing gate: two slim posts, a thin bar, a small timing box and a modest banner. The finish has a checkered bar.
  const half=f.size*S/2,c=f.kind==='start'?'#2f6fd1':'#d6453b';
- for(const sx of [-half,half])box(g,'#e9e9df',sx,2.1,0,.22,4.2,.22);
- box(g,c,0,4.05,0,half*2,.7,.12);const l=label(f.kind==='start'?'START · '+COURSE.name.toUpperCase():'FINISH');l.scale.set(9,1.7,1);l.position.set(0,5.1,0);g.add(l);
+ for(const sx of [-half,half]){box(g,'#e9e9df',sx,1.6,0,.14,3.2,.14);box(g,c,sx,.5,0,.2,1,.2);}
+ if(f.kind==='finish'){const n=Math.round(half*2/.4);for(let i=0;i<n;i++)box(g,i%2?'#111':'#fff',-half+.2+i*.4,3.2,0,.4,.3,.1);}else box(g,c,0,3.2,0,half*2,.16,.1);
+ box(g,'#14181a',0,2.7,0,1.3,.5,.18);box(g,'#ff6a2a',0,2.7,.1,.9,.16,.02);const l=label(f.kind==='start'?'START':'FINISH');l.scale.set(3.4,.7,1);l.position.set(0,3.85,0);g.add(l);
+ if(f.kind==='start'){ // staging area: a flat approach with a low fence line on either side of the start so you line up before you drop in
+  for(const sx of [-1,1])for(let k=0;k<5;k++)box(g,k%2?'#d6453b':'#f4f4f0',sx*(half+1.2),.5,-(k*2.2+2.4),.14,1,2.1);}
  }
  else{box(g,'#8c7652',0,1,0,.07,2,.07);box(g,f.seed%2?'#d89b5d':'#91ae92',.42,1.8,0,.85,.5,.04);}world.add(g);return g;}
  type PoleObj={group:T.Group;shaft:T.Mesh;basket:T.Mesh;tip:T.Mesh;len:number;setLen(l:number):void};
- type Rider={imported:ReturnType<ReturnType<typeof createModelAssets>['rider']>;rig:Rig;hipRestY:number;root:T.Group;stunt:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;kneeL:T.Group;kneeR:T.Group;elbowL:T.Group;elbowR:T.Group;skiL:T.Group;skiR:T.Group;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear'];equipment:T.Object3D[];rag:Rag|null;land:number;airStart:number;wasAir:boolean;edgeSign:number;release:number;boardG:T.Group;tiltP?:number;tiltR?:number;bodyY?:number;qs:T.Quaternion;grabW:number;grabErr:number;bikeG:T.Group;bikePivot:T.Group;contact:number;normals:T.Vector3[];torso:T.Group;poles:PoleObj[];pp:PoseOut|null;lastX:number;lastY:number;speedEst:number};
+ type Rider={imported:ReturnType<ReturnType<typeof createModelAssets>['rider']>;rig:Rig;hipRestY:number;root:T.Group;stunt:T.Group;body:T.Group;armL:T.Group;armR:T.Group;legL:T.Group;legR:T.Group;kneeL:T.Group;kneeR:T.Group;elbowL:T.Group;elbowR:T.Group;skiL:T.Group;skiR:T.Group;signature:string;lastAngle:number;lastTime:number;lean:number;gear:Outfit['gear'];equipment:T.Object3D[];rag:Rag|null;land:number;airStart:number;wasAir:boolean;edgeSign:number;release:number;boardG:T.Group;lastLand?:number;tiltP?:number;tiltR?:number;bodyY?:number;qs:T.Quaternion;grabW:number;grabErr:number;bikeG:T.Group;bikePivot:T.Group;contact:number;normals:T.Vector3[];torso:T.Group;poles:PoleObj[];pp:PoseOut|null;lastX:number;lastY:number;speedEst:number};
  type Rag={start:number;tumble:number;tumbleV:number;yaw:number;yawV:number;h:number;hV:number;seed:number};
  type Debris={obj:T.Object3D;owner:Rider;vel:T.Vector3;spin:T.Vector3};const debris:Debris[]=[];
  const outfitAvatar=(o:Outfit)=>o.avatar||'explorer';
@@ -234,7 +241,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
    const v:number[]=[];for(let k=1;k<t.pts.length;k++){const a=t.pts[k-1],b=t.pts[k];if(b.gap)continue;const ax=a.nx*a.w/2,az=a.nz*a.w/2,bx=b.nx*b.w/2,bz=b.nz*b.w/2;
     v.push(a.x-ax,a.y,a.z-az,a.x+ax,a.y,a.z+az,b.x+bx,b.y,b.z+bz,a.x-ax,a.y,a.z-az,b.x+bx,b.y,b.z+bz,b.x-bx,b.y,b.z-bz);}
    t.mesh.geometry.dispose();t.mesh.geometry=new T.BufferGeometry();t.mesh.geometry.setAttribute('position',new T.Float32BufferAttribute(v,3));});}
- type Motion={qx?:number;qy?:number;qz?:number;qw?:number;tuckAmt?:number;extAmt?:number;gtKind?:string;gtAmt?:number;balance?:number;stumble?:number;edgeAngle?:number;crash?:{kind:string;fx:number;fy:number;power:number;lean:number;side:number;tilt:number}|null;cross?:number;scissor?:number;grabStyle?:number;tuck?:number;lift?:number;rail?:boolean;fakie?:boolean;x:number;y:number;z:number;angle:number;speed?:number;pushPhase?:number;pushPower?:number;edge?:number;skid?:number;absorb?:number;backseat?:number;snow?:string};
+ type Motion={landSeq?:number;landYaw?:number;qx?:number;qy?:number;qz?:number;qw?:number;tuckAmt?:number;extAmt?:number;gtKind?:string;gtAmt?:number;balance?:number;stumble?:number;edgeAngle?:number;crash?:{kind:string;fx:number;fy:number;power:number;lean:number;side:number;tilt:number}|null;cross?:number;scissor?:number;grabStyle?:number;tuck?:number;lift?:number;rail?:boolean;fakie?:boolean;x:number;y:number;z:number;angle:number;speed?:number;pushPhase?:number;pushPower?:number;edge?:number;skid?:number;absorb?:number;backseat?:number;snow?:string};
  const _qg=new T.Quaternion(),_qa=new T.Quaternion(),_qk=new T.Quaternion(),_Y=new T.Vector3(0,1,0),_NY=new T.Vector3(0,-1,0),_ft=[new T.Vector3(),new T.Vector3()],_qf=[new T.Quaternion(),new T.Quaternion()],_qy=new T.Quaternion(),_so=new T.Vector3(),_H=new T.Vector3(),_D=new T.Vector3(),_qS=new T.Quaternion(),_qH=new T.Quaternion(),_qW=new T.Quaternion();
  // Gear geometry (measured from the models): boot sits on the binding centre, .10 behind the ski's middle, on top of the binding.
  const SKI_TOP=.089,SKI_BIND=.10,BOARD_TOP=.0875;
@@ -257,13 +264,14 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const baseY=ground(p.x,p.y)+(p.z+(p.lift||0))*S;if(first||air||bail>0||r.bodyY===undefined||Math.abs(baseY-r.bodyY)>1.5)r.bodyY=baseY;else r.bodyY+=(baseY-r.bodyY)*(1-Math.exp(-dt*15));
  r.root.position.set(p.x*S,r.bodyY,-p.y*S);
  // The rider is not a flat sprite on the ground plane: on a slope or up a kicker face the whole body leans with the surface (about half to full of its angle), and eases back upright in the air.
- {let tp=0,tr=0;if(!air&&!(bail>0)){const d=14,fx=Math.sin(p.angle),fy=Math.cos(p.angle),rx=Math.cos(p.angle),ry=-Math.sin(p.angle),sf=(x:number,y:number)=>ground(x,y)+(p.lift||0)*0+featLiftAt(x,y);
-   tp=Math.atan((sf(p.x+fx*d,p.y+fy*d)-sf(p.x-fx*d,p.y-fy*d))/(2*d))*.8;tr=Math.atan((sf(p.x+rx*d,p.y+ry*d)-sf(p.x-rx*d,p.y-ry*d))/(2*d))*.6;}
+ {let tp=0,tr=0;if(!air&&!(bail>0)){const d=14,fx=Math.sin(p.angle),fy=Math.cos(p.angle),rx=Math.cos(p.angle),ry=-Math.sin(p.angle),sf=(x:number,y:number)=>ground(x,y)+featLiftAt(x,y)*S;
+   tp=Math.atan((sf(p.x+fx*d,p.y+fy*d)-sf(p.x-fx*d,p.y-fy*d))/(2*d*S))*.8;tr=Math.atan((sf(p.x+rx*d,p.y+ry*d)-sf(p.x-rx*d,p.y-ry*d))/(2*d*S))*.6;}
   r.tiltP=(r.tiltP||0)+(tp-(r.tiltP||0))*(1-Math.exp(-dt*(air?10:8)));r.tiltR=(r.tiltR||0)+(tr-(r.tiltR||0))*(1-Math.exp(-dt*(air?10:8)));
   r.root.rotation.order='YXZ';r.root.rotation.set(Math.max(-.7,Math.min(.7,r.tiltP)),-p.angle,Math.max(-.5,Math.min(.5,r.tiltR)));}
  // Flips rotate around the hips, with equipment carried through the motion.
  // The rider's body is a free rigid body in the air (the engine integrates its real orientation); on the ground it eases back to the skiing lean,
  // so there is no snap in or out of a trick. Stumbles wobble it, and butters and manuals tip it nose-down or tail-down.
+ if(p.landSeq!==undefined){if(r.lastLand!==undefined&&r.lastLand!==p.landSeq&&!first)r.qs.premultiply(_qk.setFromAxisAngle(_Y,-(p.landYaw||0)));r.lastLand=p.landSeq;}
  {const wob=(p.stumble||0),gtA=p.gtAmt||0,gtK=p.gtKind||'';let gx=(p.backseat||0)*.3+(p.fakie&&!board&&!air?.08:0)+(gtK==='nose'?.32:gtK==='tail'?-.34:gtK==='manual'?-.14:0)*gtA+Math.sin(t*15)*.07*Math.min(1,wob);
   let gz=r.lean*(1-r.release*.6)+(gtK==='manual'?(p.balance||0)*.35:0)+Math.sin(t*11+1)*.09*Math.min(1,wob);
   _qg.setFromEuler(_e.set(gx,0,gz));

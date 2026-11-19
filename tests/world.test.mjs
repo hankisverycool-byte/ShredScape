@@ -59,6 +59,6 @@ test('trees stay off trails, parks and lodges; the bowl above the treeline is ba
 test('features lookup is fast enough to run every half second',()=>{const t=performance.now();for(let i=0;i<30;i++)featuresNear(-1000+i*60,4000+i*150);assert.ok((performance.now()-t)/30<5);});
 test('lifts run uphill, and the timed course follows Spar Gulch from top to bottom',()=>{
  for(const L of LIFTS){assert.ok(L.y0>L.y1);assert.ok(groundHeight(L.x1,L.y1)>groundHeight(L.x0,L.y0)+100,L.name);}
- const c=R.COURSE;assert.equal(c.name,'Spar Gulch GS');assert.equal(c.gates.length,9);assert.ok(c.gates.at(-1).y-c.start.y>2000);
+ const c=R.COURSE;assert.equal(c.name,'Spar Gulch GS');assert.equal(c.gates.length,9);assert.ok(c.gates.at(-1).y-c.start.y>1800);
  for(const g of [c.start,...c.gates])assert.ok(Math.abs(g.x-trailX(TRAILS.find(t=>t.id==='spar-gulch'),g.y))<g.w);
 });
