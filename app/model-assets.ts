@@ -11,13 +11,19 @@ function logoTexture(b:Brand){let t=logos.get(b);if(!t){const c=document.createE
 
 type Template = T.Group;
 export function createModelAssets(onReady:()=>void){
- const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;let goggleParts:{frame:T.BufferGeometry;lens:T.BufferGeometry}|null=null;let helmetParts:{shell:T.BufferGeometry;liner:T.BufferGeometry|null;pads:T.BufferGeometry|null}|null=null;const paintCache=new Map<string,T.BufferGeometry>();
+ const loader=new GLTFLoader(),trees:Template[]=[];let board:Template|null=null,skis:Template|null=null,person:Template|null=null,disposed=false;const houses:Template[]=[];let mountainParts:{geo:T.BufferGeometry;mat:T.Material}[]=[];let goggleParts:{frame:T.BufferGeometry;lens:T.BufferGeometry}|null=null;let helmetParts:{shell:T.BufferGeometry;liner:T.BufferGeometry|null;pads:T.BufferGeometry|null}|null=null;const paintCache=new Map<string,T.BufferGeometry>();
  const resources=new Set<T.BufferGeometry|T.Material|T.Texture>();
  function track(g:T.Object3D){g.traverse(o=>{if(o instanceof T.Mesh){resources.add(o.geometry);o.geometry.userData.assetShared=true;for(const m of Array.isArray(o.material)?o.material:[o.material]){resources.add(m);m.userData.assetShared=true;for(const value of Object.values(m))if(value instanceof T.Texture)resources.add(value);}}});}
  function bake(mesh:T.Mesh,matrix=mesh.matrixWorld){const out=new T.Mesh(mesh.geometry.clone().applyMatrix4(matrix),mesh.material);out.name=mesh.name;out.castShadow=true;out.receiveShadow=true;return out;}
  function fit(group:T.Group,size:number,axis:'x'|'y'|'z'){const box=new T.Box3().setFromObject(group),center=box.getCenter(new T.Vector3()),scale=size/box.getSize(new T.Vector3())[axis];for(const m of group.children as T.Mesh[]){m.geometry.translate(-center.x,-box.min.y,-center.z);m.geometry.scale(scale,scale,scale);}track(group);return group;}
  async function load(url:string,prepare:(scene:T.Group)=>void){try{const gltf=await loader.loadAsync(url);if(disposed){gltf.scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});return;}gltf.scene.updateMatrixWorld(true);track(gltf.scene);prepare(gltf.scene);onReady();}catch(e){console.warn('Model could not load; using built-in fallback.',url,e);}}
  void load('/models/snowy-trees.glb',scene=>{scene.traverse(o=>{if(o instanceof T.Mesh){const g=new T.Group();g.add(bake(o));trees.push(fit(g,5,'y'));}});});
+ // Village houses (CC BY 4.0, see model-credits): four houses, each merged to one mesh per material and centred with its base at y=0.
+ void load('/models/village-houses.glb',scene=>{for(const grp of scene.children)if(grp.name.startsWith('House'))houses.push(grp as Template);});
+ // Low-poly mountain (CC BY 4.0): baked, centred, base at y=0 and scaled so its widest side is 1.
+ void load('/models/mountain.glb',scene=>{const parts:{geo:T.BufferGeometry;mat:T.Material}[]=[];scene.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.clone().applyMatrix4(o.matrixWorld);parts.push({geo:g,mat:o.material as T.Material});}});
+  if(!parts.length)return;const bb=new T.Box3();for(const p of parts){p.geo.computeBoundingBox();bb.union(p.geo.boundingBox!);}const c=bb.getCenter(new T.Vector3()),k=1/Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);
+  for(const p of parts){p.geo.translate(-c.x,-bb.min.y,-c.z);p.geo.scale(k,k,k);p.geo.userData.assetShared=true;}mountainParts=parts;});
  // Ski helmet (CC BY 4.0, see model-credits): baked, turned so the opening faces -Z like the rider, and normalised to width 1 with its rim at y=0.
  void load('/models/ski-helmet.glb',scene=>{const turn=new T.Matrix4().makeRotationY(Math.PI),parts:Record<string,T.BufferGeometry>={};
   scene.traverse(o=>{if(o instanceof T.Mesh)parts[o.name]=o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(turn);});
@@ -71,6 +77,8 @@ export function createModelAssets(onReady:()=>void){
  return{
   tree(seed:number){return trees.length?clone(trees[Math.abs(Math.floor(seed))%trees.length]):null;},
   snowboard(){return clone(board);},ski(){return clone(skis);},
+  house(i:number){return houses.length?clone(houses[Math.abs(Math.floor(i))%houses.length]):null;},houseCount:()=>houses.length,
+  mountain(){if(!mountainParts.length)return null;const g=new T.Group();for(const p of mountainParts){const m=new T.Mesh(p.geo,p.mat);m.castShadow=false;g.add(m);}return g;},
   rider(outfit:Outfit){
    if(!person)return null;
    const root=new T.Group(),bones:T.Bone[]=[];

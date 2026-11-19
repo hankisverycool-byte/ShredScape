@@ -46,5 +46,21 @@
     "license": "CC BY 4.0",
     "url": "https://creativecommons.org/licenses/by/4.0/",
     "changes": "Kept the frame and lens only, reduced to about 3.6k vertices, resized to the helmet and recoloured per kit; the strap is generated in code."
+  },
+  {
+    "title": "Low Poly Winter Village",
+    "author": "I'm blendin' it",
+    "source": "https://sketchfab.com/3d-models/low-poly-winter-village-5abe872cf7e34afb8d1c2b47cc7b4fe6",
+    "license": "CC BY 4.0",
+    "url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Kept the four houses, merged each to one mesh per material, centred and resized them, and placed them in the villages and lodges."
+  },
+  {
+    "title": "Low Poly Mountain Free",
+    "author": "Poly Craftsman",
+    "source": "https://sketchfab.com/3d-models/low-poly-mountain-free-dabda46f9be2416c93a4b584be17786b",
+    "license": "CC BY 4.0",
+    "url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Centred, resized and repeated as the distant mountain ranges."
   }
 ]

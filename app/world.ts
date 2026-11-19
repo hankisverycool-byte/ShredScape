@@ -98,7 +98,7 @@ export function snowAt(x:number,y:number):'groomed'|'powder'|'ice'{return onTrai
 // ---------- landmarks and lifts ----------
 export type Landmark={kind:'village'|'lodge'|'parkgate'|'lake';x:number;y:number;name:string;count?:number;r?:number};
 export const LANDMARKS:Landmark[]=[
- {kind:'village',x:0,y:17420,name:'ASPEN',count:16},{kind:'village',x:-1050,y:16700,name:'SNOWMASS VILLAGE',count:9},{kind:'village',x:1050,y:16700,name:'HIGHLANDS BASE',count:4},
+ {kind:'village',x:0,y:17420,name:'ASPEN',count:12},{kind:'village',x:-1050,y:16700,name:'SNOWMASS VILLAGE',count:6},{kind:'village',x:1050,y:16700,name:'HIGHLANDS BASE',count:3},
  {kind:'lodge',x:850,y:430,name:'SUNDECK'},{kind:'lodge',x:-850,y:1500,name:'ELK CAMP'},
  ...PARKS.map(z=>({kind:'parkgate' as const,x:(z.x0+z.x1)/2,y:z.y0+30,name:z.name.toUpperCase(),r:(z.x1-z.x0)/2})),
 ];

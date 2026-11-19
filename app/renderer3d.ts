@@ -62,10 +62,12 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   for(const side of [-1,1]){const w=8000,geo=new T.PlaneGeometry(w*S,50,10,12);geo.rotateX(Math.PI/2);const a=geo.attributes.position,cs:number[]=[];
    for(let i=0;i<a.count;i++){const yy=start+(a.getZ(i)+25)/S,gx=side*(WORLD_X+w/2+(a.getX(i)/S)*0),h=ground(side*WORLD_X,yy),k=Math.max(0,Math.min(1,Math.abs(a.getX(i)/S+w/2)/w));a.setY(i,h-k*14*0);a.setX(i,side*(WORLD_X*S+(a.getX(i)+w*S/2)));a.setZ(i,-yy*S);void gx;_c.set('#eef4f6').lerp(_c.clone().set('#d6e3ec'),k);cs.push(_c.r,_c.g,_c.b);}
    geo.setAttribute('color',new T.Float32BufferAttribute(cs,3));geo.computeVertexNormals();const m=new T.Mesh(geo,farMat);m.receiveShadow=false;group.add(m);
-   for(let i=0;i<3;i++){const hs=hash(chunk*53+i*7+(side>0?3:0)),x=side*(6500+hash(hs*91)*3800+i*600),y=start+hash(hs*17)*1000,sc=90+hash(hs*5)*110,peak=new T.Mesh(peakVariants[(i+chunk+(side>0?1:0)+4000)%4],peakMat);
-    peak.position.set(x*S,ground(side*WORLD_X,y)+sc*.35,-y*S);peak.scale.set(sc*.95,sc*1.15+hash(hs*3)*50,sc*.95);peak.castShadow=false;group.add(peak);}}
-  if(chunk<=-1||chunk>=17)for(let i=-7;i<=7;i++){const hs=hash(chunk*19+i),y=chunk<=-1?-7500-hash(hs)*1500:BOUNDS.maxY+7500+hash(hs)*1500,sc=110+hash(hs*3)*120,peak=new T.Mesh(peakVariants[(i+8)%4],peakMat);
-   peak.position.set((i*1700+hash(hs*7)*800)*S,ground(0,chunk<=-1?-1000:BOUNDS.maxY)+sc*.3,-y*S);peak.scale.set(sc*1.1,sc*1.2+hash(hs*5)*60,sc*1.1);peak.castShadow=false;group.add(peak);}}
+   for(let i=0;i<3;i++){const hs=hash(chunk*53+i*7+(side>0?3:0)),x=side*(6500+hash(hs*91)*3800+i*600),y=start+hash(hs*17)*1000,sc=90+hash(hs*5)*110,mm=models.mountain();
+    if(mm){const w=300+hash(hs*5)*420;mm.position.set(x*S,ground(side*WORLD_X,y)-6,-y*S);mm.scale.set(w,w*1.25,w);mm.rotation.y=hash(hs*9)*6.28;group.add(mm);}
+    else{const peak=new T.Mesh(peakVariants[(i+chunk+(side>0?1:0)+4000)%4],peakMat);peak.position.set(x*S,ground(side*WORLD_X,y)+sc*.35,-y*S);peak.scale.set(sc*.95,sc*1.15+hash(hs*3)*50,sc*.95);peak.castShadow=false;group.add(peak);}}}
+  if(chunk<=-1||chunk>=17)for(let i=-7;i<=7;i++){const hs=hash(chunk*19+i),y=chunk<=-1?-7500-hash(hs)*1500:BOUNDS.maxY+7500+hash(hs)*1500,sc=110+hash(hs*3)*120,mm=models.mountain(),px=(i*1700+hash(hs*7)*800)*S,gy=ground(0,chunk<=-1?-1000:BOUNDS.maxY);
+   if(mm){const w=420+hash(hs*5)*520;mm.position.set(px,gy-6,-y*S);mm.scale.set(w,w*1.3,w);mm.rotation.y=hash(hs*9)*6.28;group.add(mm);}
+   else{const peak=new T.Mesh(peakVariants[(i+8)%4],peakMat);peak.position.set(px,gy+sc*.3,-y*S);peak.scale.set(sc*1.1,sc*1.2+hash(hs*5)*60,sc*1.1);peak.castShadow=false;group.add(peak);}}}
  // ---- Barriers and the crowd: padded panels along both sides of the course, spectators standing on the stands behind them. ----
  const crowdGeoB=new T.CapsuleGeometry(.28,.55,2,6),crowdGeoH=new T.SphereGeometry(.2,6,5);crowdGeoB.userData.assetShared=true;crowdGeoH.userData.assetShared=true;
  const crowdMat=new T.MeshStandardMaterial({color:'#ffffff',roughness:.9,flatShading:true}),headMat=new T.MeshStandardMaterial({color:'#ffffff',roughness:.8,flatShading:true});crowdMat.userData.assetShared=true;headMat.userData.assetShared=true;
@@ -100,7 +102,9 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  const rel=(x:number,y:number,x0:number,y0:number)=>ground(x,y)-ground(x0,y0);
  for(const lm of LANDMARKS){if(Math.floor(lm.y/1000)!==chunk)continue;const g=new T.Group();g.position.set(lm.x*S,ground(lm.x,lm.y),-lm.y*S);
   if(lm.kind==='village'||lm.kind==='lodge'){
-   const n=lm.count||1,cols=Math.min(4,n);for(let i=0;i<n;i++){const c=new T.Group(),cx=(i%cols-(cols-1)/2)*11,cz=Math.floor(i/cols)*10-4;c.position.set(cx,rel(lm.x+cx/S,lm.y-cz/S,lm.x,lm.y),cz);c.rotation.y=(hash(i+lm.x)-.5)*.3;cabin(c);g.add(c);}
+   const n=lm.count||1,cols=Math.min(4,n),real=models.houseCount()>0,sp=real?(lm.kind==='lodge'?0:15):11;for(let i=0;i<n;i++){const c=new T.Group(),cx=(i%cols-(cols-1)/2)*sp,cz=Math.floor(i/cols)*sp*.95-4;c.position.set(cx,rel(lm.x+cx/S,lm.y-cz/S,lm.x,lm.y),cz);c.rotation.y=(hash(i+lm.x)-.5)*.3;
+    const hm=lm.kind==='lodge'?models.house(2+Math.floor(hash(lm.x+lm.y)*2)):models.house(hash(i*13+lm.x)>.93?2+Math.floor(hash(i*5+lm.y)*2):Math.floor(hash(i*7+lm.y)*2));
+    if(hm){hm.scale.setScalar(lm.kind==='lodge'?2.6:2);hm.rotation.y=Math.floor(hash(i*3+lm.x+lm.y)*4)*Math.PI/2+(hash(i)-.5)*.2;c.add(hm);}else cabin(c);g.add(c);}
    const m=new T.Group();m.position.set(0,0,-9);sign(m,lm.name);g.add(m);
   }else if(lm.kind==='parkgate'){ // an arch over the top of the park with its name on it
    const half=Math.min((lm.r||300)*S*.8,15);for(const sx of [-half,half])box(g,'#c69255',sx,5.2,0,.16,10.4,.16);box(g,'#364e49',0,10.4,0,half*2+.4,.4,.16);const l=label(lm.name);l.scale.set(8,1.5,1);l.position.set(0,11.8,0);g.add(l); // high enough that the chase camera rides under it
@@ -394,7 +398,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  }
  function stepDebris(dt:number){for(const d of debris){const o=d.obj;d.vel.y-=20*dt;o.position.addScaledVector(d.vel,dt);o.rotation.x+=d.spin.x*dt;o.rotation.y+=d.spin.y*dt;o.rotation.z+=d.spin.z*dt;
   const floor=ground(o.position.x/S,-o.position.z/S)+.06;if(o.position.y<floor){o.position.y=floor;d.vel.y=Math.abs(d.vel.y)>1?-d.vel.y*.3:0;d.vel.x*=.6;d.vel.z*=.6;d.spin.multiplyScalar(.55);}}}
- function draw(f:Frame){curFeatures=f.features as never;const fdt=Math.min(.05,Math.max(0,f.clock-lastClock));lastClock=f.clock;stepDebris(fdt);layTracks(f);if(f.bail>0&&!wasBail)shake=1;wasBail=f.bail>0;shake*=Math.exp(-5*fdt);if(assetRevision!==seenAssetRevision){seenAssetRevision=assetRevision;for(const g of featureMap.values())disposeGroup(g);featureMap.clear();local.signature='';for(const r of remotes.values())r.signature='';}
+ function draw(f:Frame){curFeatures=f.features as never;const fdt=Math.min(.05,Math.max(0,f.clock-lastClock));lastClock=f.clock;stepDebris(fdt);layTracks(f);if(f.bail>0&&!wasBail)shake=1;wasBail=f.bail>0;shake*=Math.exp(-5*fdt);if(assetRevision!==seenAssetRevision){seenAssetRevision=assetRevision;for(const g of chunks.values())disposeGroup(g);chunks.clear();crowds.clear();zone=-999;for(const g of featureMap.values())disposeGroup(g);featureMap.clear();local.signature='';for(const r of remotes.values())r.signature='';}
  const w=canvas.clientWidth,h=canvas.clientHeight;if(w!==width||h!==height){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
  const chunk=Math.floor(f.y/1000);if(chunk!==zone){zone=chunk;for(let n=chunk-2;n<=chunk+8;n++)if(!chunks.has(n))chunks.set(n,makeTerrain(n));for(const [n,g]of chunks)if(n<chunk-2||n>chunk+8){disposeGroup(g);chunks.delete(n);crowds.delete(n);}}
  const ids=new Set(f.features.map(p=>p.id));for(const feature of f.features)if(!featureMap.has(feature.id))featureMap.set(feature.id,makeFeature(feature));for(const[id,g]of featureMap)if(!ids.has(id)){disposeGroup(g);featureMap.delete(id);}
