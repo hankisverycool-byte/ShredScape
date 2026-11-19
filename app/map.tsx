@@ -65,15 +65,21 @@ export function WorldMap({x,y,angle,selected,onSelect,waypoint,onPick}:{x:number
  </div>;
 }
 
-export function MiniMap({x,y,angle,peers=[],waypoint}:{x:number;y:number;angle:number;peers?:{x:number;y:number;outfit:{jacket:string}}[];waypoint?:Waypoint|null}){
- const ref=useRef<HTMLCanvasElement>(null),ready=useMap();
- useEffect(()=>{const c=ref.current;if(!c)return;const ctx=c.getContext('2d')!,size=c.width,span=1500*PX,[px,py]=toMap(x,y),k=size/span,ky=size/H; // the crop spans the course's full width and 1500 units of its length
-  ctx.clearRect(0,0,size,size);ctx.fillStyle='#dfe9e4';ctx.fillRect(0,0,size,size);if(ready)ctx.drawImage(ready,px-span/2,0,span,H,0,0,size,size);
-  const cx=(qx:number)=>size/2+(qx-px)*k,cy=(qy:number)=>(qy)*ky;
-  for(const p of peers){const [qx,qy]=toMap(p.x,p.y);ctx.fillStyle=p.outfit.jacket;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx(qx),cy(qy),5,0,7);ctx.fill();ctx.stroke();}
-  if(waypoint){const [qx,qy]=toMap(waypoint.x,waypoint.y);let X=cx(qx),Y=cy(qy);const m=10,out=X<m||X>size-m||Y<m||Y>size-m;if(out){const dx=X-size/2,dy=Y-cy(py),f=(size/2-m)/Math.max(Math.abs(dx),1);X=size/2+dx*Math.min(1,f);Y=Math.max(m,Math.min(size-m,cy(py)+dy*Math.min(1,f)));}
-   ctx.save();ctx.translate(X,Y);ctx.fillStyle='#ff4a1c';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();if(out){ctx.rotate(Math.atan2(Y-cy(py),X-size/2)+Math.PI/2);ctx.moveTo(0,-9);ctx.lineTo(7,6);ctx.lineTo(-7,6);}else{ctx.moveTo(0,-10);ctx.lineTo(8,0);ctx.lineTo(0,10);ctx.lineTo(-8,0);}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
-  ctx.save();ctx.translate(size/2,cy(py));ctx.rotate(Math.PI/2+angle);ctx.fillStyle='#ee7f4a';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(8,8);ctx.lineTo(0,4);ctx.lineTo(-8,8);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
- },[x,y,angle,peers,ready,waypoint]);
- return <canvas ref={ref} className="minimap" width={180} height={180} aria-label="Minimap"/>;
+export function MiniMap({x,y,angle,peers=[],waypoint,gate=-1}:{x:number;y:number;angle:number;peers?:{x:number;y:number;outfit:{jacket:string}}[];waypoint?:Waypoint|null;gate?:number}){
+ // A route view of the slope ahead: shaded relief (cool = flatter, deep blue = steep), barriers, gates and park features. Downhill is down the screen.
+ const ref=useRef<HTMLCanvasElement>(null);
+ useEffect(()=>{const c=ref.current;if(!c)return;const ctx=c.getContext('2d')!,size=c.width,halfW=760,back=350,ahead=1650,kx=size/(2*halfW),ky=size/(back+ahead),cxm=BOUNDS?0:0;void cxm;
+  const sx=(wx:number)=>size/2+(wx-courseX(y))*kx,sy=(wy:number)=>(wy-(y-back))*ky;
+  ctx.fillStyle='#e8f1f7';ctx.fillRect(0,0,size,size);
+  const N=30,cw=size/N;for(let j=0;j<N;j++)for(let i=0;i<N;i++){const wx=courseX(y)-halfW+(i+.5)/N*2*halfW,wy=y-back+(j+.5)/N*(back+ahead),sl=(groundHeight(wx,wy+40)-groundHeight(wx,wy-40))/80,rel=(groundHeight(wx+30,wy)-groundHeight(wx-30,wy))/60,v=Math.max(0,Math.min(1,Math.abs(sl)*7+Math.abs(rel)*3)),out=Math.abs(wx)>640;
+   ctx.fillStyle=out?`rgb(${150-v*40|0},${178-v*40|0},${170-v*30|0})`:`rgb(${238-v*120|0},${246-v*95|0},${255-v*50|0})`;ctx.fillRect(i*cw,j*cw,cw+1,cw+1);}
+  ctx.lineWidth=3;for(const bx of [-640,640]){ctx.strokeStyle='#ff6a2a';ctx.beginPath();ctx.moveTo(sx(bx),0);ctx.lineTo(sx(bx),size);ctx.stroke();}
+  for(const f of PARK_FEATURES){if(f.y<y-back||f.y>y+ahead)continue;ctx.fillStyle=f.kind==='rail'?'#1c2a33':'#ff8a3a';ctx.fillRect(sx(f.x)-3,sy(f.y)-2,6,4);}
+  const g=COURSE.gates;ctx.lineWidth=4;g.forEach((q,i)=>{if(q.y<y-back||q.y>y+ahead)return;const next=i===gate,done=gate>=0&&i<gate;ctx.strokeStyle=done?'#7a8791':next?'#ffffff':i%2?'#e5322d':'#2a6bd6';ctx.beginPath();ctx.moveTo(sx(q.x-q.w/2),sy(q.y));ctx.lineTo(sx(q.x+q.w/2),sy(q.y));ctx.stroke();if(next){ctx.fillStyle='#fff';ctx.fillRect(sx(q.x)-5,sy(q.y)-5,10,10);}});
+  for(const p of peers){ctx.fillStyle=p.outfit.jacket;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(sx(p.x),sy(p.y),5,0,7);ctx.fill();ctx.stroke();}
+  if(waypoint){ctx.fillStyle='#ff4a1c';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(Math.max(8,Math.min(size-8,sx(waypoint.x))),Math.max(8,Math.min(size-8,sy(waypoint.y))),6,0,7);ctx.fill();ctx.stroke();}
+  ctx.save();ctx.translate(sx(x),sy(y));ctx.rotate(Math.PI-angle);ctx.fillStyle='#ee7f4a';ctx.strokeStyle='#13261e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(8,8);ctx.lineTo(0,4);ctx.lineTo(-8,8);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ },[x,y,angle,peers,waypoint,gate]);
+ return <canvas ref={ref} className="minimap" width={180} height={180} aria-label="Route minimap"/>;
 }
+const courseX=(_y:number)=>0;

@@ -6,6 +6,8 @@ export function createAudio() {
   let music: BiquadFilterNode | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   let enabled = false;
+  let windGain: GainNode | undefined;
+  let windFilter: BiquadFilterNode | undefined;
   let destroyed = false;
   let nextNote = 0;
   let step = 0;
@@ -101,6 +103,35 @@ export function createAudio() {
         output.connect(context.destination);
       }
       await start();
+    },
+    /** Wind and snow-scrape bed driven by the ride itself; works even with the music off. */
+    setMotion(kmh: number, skid: number, airborne: boolean) {
+      if (destroyed || typeof window === 'undefined' || document.hidden) return;
+      if (!context) {
+        const Constructor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Constructor) return;
+        context = new Constructor();
+        output = context.createGain();
+        output.gain.value = 0;
+        music = context.createBiquadFilter();
+        music.type = 'lowpass';
+        music.frequency.value = 2600;
+        music.Q.value = 0.3;
+        music.connect(output);
+        output.connect(context.destination);
+      }
+      if (context.state === 'suspended') void context.resume().catch(() => undefined);
+      if (!windGain) {
+        const buffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate), data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const src = context.createBufferSource(); src.buffer = buffer; src.loop = true;
+        windFilter = context.createBiquadFilter(); windFilter.type = 'bandpass'; windFilter.Q.value = 0.7; windFilter.frequency.value = 400;
+        windGain = context.createGain(); windGain.gain.value = 0;
+        src.connect(windFilter); windFilter.connect(windGain); windGain.connect(context.destination); src.start();
+      }
+      const t = context.currentTime, v = Math.min(1, kmh / 110), scrape = airborne ? 0 : Math.min(1, skid * 1.4) * Math.min(1, kmh / 30);
+      windGain.gain.setTargetAtTime(volume * (0.02 + 0.22 * v * v + 0.12 * scrape), t, 0.12);
+      windFilter!.frequency.setTargetAtTime(300 + 1500 * v + 900 * scrape, t, 0.12);
     },
     playEffect(kind: 'jump' | 'land' | 'trick' | 'crash') {
       if (!context || !enabled || document.hidden || destroyed) return;

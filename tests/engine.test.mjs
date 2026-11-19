@@ -175,3 +175,9 @@ test('crash details are passed on: a wipeout records how you went down',()=>{
  const s=setup();s.game.debugPlace(0,500,0,0,150);s.game.input('jump',true);s.tick(1.3);s.game.input('jump',false);s.game.input('up',true);s.tick(.3);s.game.input('up',false);s.tick(1.3);
  assert.equal(s.state.bailed,true);assert.ok(globalThis.frameState.crash&&globalThis.frameState.crash.power>0,'crash info reaches the renderer');s.game.destroy();
 });
+test('riding switch: facing backwards is read as switch, and push, turn, brake keep it stable',()=>{
+ const s=setup();s.game.debugPlace(-300,1000,0,0,170);s.tick(.2);s.game.input('revert',true);s.game.input('revert',false);s.tick(.8);let d=s.game.debugState();assert.equal(d.fakie,true,'facing uphill while travelling downhill is switch');assert.equal(d.bailed,false);
+ s.game.input('left',true);s.tick(.8);s.game.input('left',false);d=s.game.debugState();assert.equal(d.fakie,true,'a switch carve stays switch');assert.ok(d.speed>60,'momentum kept: '+d.speed.toFixed(0));
+ s.game.input('down',true);s.tick(1);s.game.input('down',false);d=s.game.debugState();assert.equal(d.bailed,false,'braking switch does not crash');
+ s.game.input('up',true);s.tick(1);d=s.game.debugState();assert.equal(d.bailed,false);assert.ok(d.speed>30);s.game.destroy();
+});

@@ -175,10 +175,16 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  // Hand-built faceted silhouette ("classic" rider). Hips, waist and torso hang from `pelvisG` so the pelvis can move with the legs.
  const pelvisG=new T.Group();body.add(pelvisG);
  const torso=new T.Group(),up=new T.Group();torso.position.y=1.25;up.position.y=-1.25;pelvisG.add(torso);torso.add(up);
+ const kitX=kitById(o.kit),bag=kitX.style==='freeride'?1.4:kitX.style==='shell'?1.15:.92; // baggy freeride pants, relaxed shell, tight race suit
  const chest=mesh(new T.CylinderGeometry(.43,.285,.84,6),o.jacket,up,[0,1.77,0],[1,1,.61]);chest.rotation.y=Math.PI/6;
  mesh(new T.CylinderGeometry(.29,.31,.18,6),o.jacket,pelvisG,[0,1.30,0],[1,1,.7]);
+ if(kitX.style!=='race'){ // long shell hem over the hips, chest seam + zip, shoulder yoke, hood down behind the neck
+  mesh(new T.CylinderGeometry(.33,.4,.3,6),o.jacket,pelvisG,[0,1.2,0],[1,1,.74]);
+  box(up,kitX.accent,0,1.8,-.255,.035,.78,.02);box(up,kitX.accent,-.2,1.5,-.25,.34,.025,.02);box(up,kitX.accent,.2,1.5,-.25,.34,.025,.02);
+  box(up,kitX.accent,0,2.1,-.19,.7,.04,.02);
+  const hd=mesh(new T.CylinderGeometry(.2,.26,.2,6),o.jacket,up,[0,2.2,.09],[1,1,.8]);hd.rotation.x=.35;}
  box(pelvisG,'#694334',0,1.22,0,.62,.08,.38);
- mesh(new T.CylinderGeometry(.105,.12,.17,6),'#b99372',up,[0,2.22,0],[1,1,1]);
+ mesh(new T.CylinderGeometry(.105,.12,.17,6),'#b99372',up,[0,2.22,0],[1,1,1]);if(kitX.style!=='race')mesh(new T.CylinderGeometry(.14,.16,.12,6),o.jacket,up,[0,2.2,0],[1,1,.9]); // collar
  mesh(new T.SphereGeometry(1,6,4),'#bd9977',up,[0,2.43,0],[.185,.245,.18]);
  box(up,'#30291f',-.069,2.46,-.162,.047,.025,.018);box(up,'#30291f',.069,2.46,-.162,.047,.025,.018);
  mesh(new T.ConeGeometry(.06,.12,4),'#ad8765',up,[0,2.39,-.18],[.7,1,1]).rotation.x=-Math.PI/2;
@@ -187,14 +193,14 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  box(up,'#14181a',0,2.45,-.17,.34,.09,.05);box(up,kitById(o.kit).lens,0,2.45,-.2,.3,.065,.02); // goggles
  function limb(px:number,py:number,c:string,length:number,leg=false){
  const pivot=new T.Group();pivot.position.set(px,py,0);(leg?pelvisG:up).add(pivot);
- const upper=mesh(new T.CylinderGeometry(leg?.19:.18,leg?.135:.115,length*.51,5),c,pivot,[0,-length*.245,0],[1,1,leg?.95:1]);upper.rotation.y=Math.PI/5;
+ const upper=mesh(new T.CylinderGeometry(leg?.19*bag:.18*(bag>1?1.12:1),leg?.135*bag:.115*(bag>1?1.12:1),length*.51,5),c,pivot,[0,-length*.245,0],[1,1,leg?.95:1]);upper.rotation.y=Math.PI/5;
  if(!leg)mesh(new T.CylinderGeometry(.23,.18,.28,5),o.jacket,pivot,[0,-.09,0],[1,1,1]);
  const joint=new T.Group();joint.position.set(0,-length*.49,0);pivot.add(joint);
- mesh(new T.CylinderGeometry(leg?.15:.115,leg?.075:.08,length*.47,5),leg?c:'#bd9977',joint,[0,-length*.23,0],[1,1,1]);
+ mesh(new T.CylinderGeometry(leg?.15*bag:.115*(bag>1?1.12:1),leg?.075*bag+(bag>1?.05:0):.08,length*.47,5),leg?c:(kitX.style==='race'?'#bd9977':o.jacket),joint,[0,-length*.23,0],[1,1,1]);
  if(!leg)mesh(new T.CylinderGeometry(.09,.085,.12,5),o.hat,joint,[0,-length*.41,0],[1,1,1]);
  // Legs end in an ankle group (the foot turns with the ski); arms end in a hand group (glove + pole grip).
  const end=new T.Group();end.position.set(0,leg?-.5:-length*.47,0);joint.add(end);
- if(leg)box(end,'#574331',0,-length*.47+.5,-.075,.22,.19,.39);else box(end,kitById(o.kit).glove,0,0,0,.14,.17,.16);
+ if(leg){box(end,'#262b2f',0,-length*.47+.5,-.075,.25,.24,.44);box(end,'#8a949a',0,-length*.47+.4,-.2,.26,.05,.18);}else box(end,kitById(o.kit).glove,0,0,0,.14,.17,.16);
  return {pivot,joint,end};}
  const aL=limb(-.43,2.08,o.jacket,.94),aR=limb(.43,2.08,o.jacket,.94),lL=limb(-.20,1.25,o.pants,1.15,true),lR=limb(.20,1.25,o.pants,1.15,true);
  const mkLeg=(l:typeof lL,side:number):Leg=>({hip:l.pivot,knee:l.joint,ankle:l.end,hipRest:new T.Vector3(side*.2,0,0),r1:new T.Vector3(0,-1,0),r2:new T.Vector3(0,-1,0),L1:1.15*.49,L2:.5,soleOff:new T.Vector3(0,-.1355,-.075)});
@@ -425,6 +431,15 @@ export function createMountain3D(canvas:HTMLCanvasElement){
    px=f.x*S+(-q.x*dz)+dx*(-along),pz=-f.y*S+(q.x*dx)+dz*(-along),py=gy+.3+q.y*.5;
    strPos.set([px,py,pz,px-dx*len,py,pz-dz*len],i*6);}
   strGeo.attributes.position.needsUpdate=true;}
+ // ---- Edge spray: snow thrown off the skis when carving hard or skidding sideways. ----
+ const NSP=90,spPos=new Float32Array(NSP*3),spVel=new Float32Array(NSP*3),spLife=new Float32Array(NSP),spGeo=new T.BufferGeometry(),spMat=new T.PointsMaterial({color:'#ffffff',size:.16,transparent:true,opacity:.85,depthWrite:false,sizeAttenuation:true});let spNext=0,spAcc=0;
+ for(let i=0;i<NSP;i++)spPos[i*3+1]=-999;spGeo.setAttribute('position',new T.BufferAttribute(spPos,3));const spray=new T.Points(spGeo,spMat);spray.frustumCulled=false;scene.add(spray);
+ function updateSpray(f:Frame,dt:number){const kmh=f.speed*.18,e=Math.abs(f.edge||0),slip=Math.abs(Math.sin((f.angle||0)-(f.course??f.angle??0))),power=f.z>0||f.bail>0||(f.lift||0)>0?0:Math.max(e*.9,f.skid||0,slip)*Math.min(1,kmh/25);
+  spAcc+=dt*(power>.2?power*90:0);const h=f.angle||0,side=Math.sign(f.edge||Math.sin(h-(f.course??h))||1);
+  while(spAcc>=1){spAcc--;const i=spNext++%NSP,o=(Math.random()<.5?-.2:.2);spPos[i*3]=f.x*S+Math.cos(h)*o;spPos[i*3+1]=ground(f.x,f.y)+.08;spPos[i*3+2]=-f.y*S+Math.sin(h)*o;
+   const sp=(1.5+Math.random()*2.5)*(.4+power);spVel[i*3]=Math.cos(h)*side*sp+(Math.random()-.5);spVel[i*3+1]=1+Math.random()*2.2*power;spVel[i*3+2]=Math.sin(h)*side*sp+(Math.random()-.5);spLife[i]=.45+Math.random()*.3;}
+  for(let i=0;i<NSP;i++){if(spLife[i]<=0){spPos[i*3+1]=-999;continue;}spLife[i]-=dt;spVel[i*3+1]-=9*dt;spPos[i*3]+=spVel[i*3]*dt;spPos[i*3+1]+=spVel[i*3+1]*dt;spPos[i*3+2]+=spVel[i*3+2]*dt;}
+  spGeo.attributes.position.needsUpdate=true;}
  function draw(f:Frame){curFeatures=f.features as never;const fdt=Math.min(.05,Math.max(0,f.clock-lastClock));lastClock=f.clock;stepDebris(fdt);layTracks(f);if(f.bail>0&&!wasBail)shake=1;wasBail=f.bail>0;shake*=Math.exp(-5*fdt);if(assetRevision!==seenAssetRevision){seenAssetRevision=assetRevision;for(const g of chunks.values())disposeGroup(g);chunks.clear();crowds.clear();zone=-999;for(const g of featureMap.values())disposeGroup(g);featureMap.clear();local.signature='';for(const r of remotes.values())r.signature='';}
  const w=canvas.clientWidth,h=canvas.clientHeight;if(w!==width||h!==height){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
  const chunk=Math.floor(f.y/1000);if(chunk!==zone){zone=chunk;for(let n=chunk-2;n<=chunk+8;n++)if(!chunks.has(n))chunks.set(n,makeTerrain(n));for(const [n,g]of chunks)if(n<chunk-2||n>chunk+8){disposeGroup(g);chunks.delete(n);crowds.delete(n);}}
@@ -451,7 +466,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
   for(let k=1;k<=7;k++){const t=k/8,gx=camera.position.x+(f.x*S-camera.position.x)*t,gz=camera.position.z+(-f.y*S-camera.position.z)*t;need=Math.max(need,(ground(gx/S,-gz/S)+1.4-ry*t)/(1-t));}
   camera.position.y=Math.max(camera.position.y,need);}if(shake>.01&&!inMenu)camera.position.add(new T.Vector3((Math.random()-.5)*shake*.5,(Math.random()-.5)*shake*.4,0));
  if(dbg&&!inMenu){const a=f.angle+dbg.yaw;camera.position.set(f.x*S-Math.sin(a)*dbg.dist,py+(f.z+(f.lift||0))*S+dbg.height,-f.y*S+Math.cos(a)*dbg.dist);camera.lookAt(f.x*S,py+(f.z+(f.lift||0))*S+(dbg.look??1.2),-f.y*S);}
- else if(wardrobe)camera.lookAt(f.x*S,py+1.25,-f.y*S);else if(inMenu)camera.lookAt(f.x*S,py+1,-f.y*S-7);else{const want=new T.Vector3(f.x*S+Math.sin(heading)*6,py+.85*(f.z+(f.lift||0))*S+1.3,-f.y*S-Math.cos(heading)*6);if(!lookReady||jumped){camLook.copy(want);lookReady=true;}else camLook.lerp(want,1-Math.exp(-fdt*14));camera.lookAt(camLook);}
+ else if(wardrobe)camera.lookAt(f.x*S,py+1.25,-f.y*S);else if(inMenu)camera.lookAt(f.x*S,py+1,-f.y*S-7);else{const ah2=6+Math.min(10,f.speed*.04),lx=f.x*S+Math.sin(heading)*ah2,lz=-f.y*S-Math.cos(heading)*ah2,want=new T.Vector3(lx,py+.85*(f.z+(f.lift||0))*S+1.3+(ground(lx/S,-lz/S)-py)*.7,lz);if(!lookReady||jumped){camLook.copy(want);lookReady=true;}else camLook.lerp(want,1-Math.exp(-fdt*14));camera.lookAt(camLook);}
  const fov=f.settings.fov+(inMenu?0:Math.min(9,f.speed*.028)+Math.min(5,f.z*S*.4));if(Math.abs(camera.fov-fov)>.05){camera.fov+=(fov-camera.fov)*.08;camera.updateProjectionMatrix();}
  // Broadcast replay cameras: a chase cam, a static side cam, a low cam ahead of the rider, an orbit and a wide. Static cams stay put and pan to follow.
  if(f.cam&&!inMenu){const now=performance.now(),rdt=Math.min(.05,(now-rcT)/1000);rcT=now;const rx=f.x*S,rz=-f.y*S,ry=py+(f.z+(f.lift||0))*S+1,hd=f.course??f.angle,fx=Math.sin(hd),fz=-Math.cos(hd),px=-fz,pz=fx,mode=f.cam.mode,R=new T.Vector3(rx,ry,rz);
@@ -468,7 +483,7 @@ export function createMountain3D(canvas:HTMLCanvasElement){
  if(wardrobe){if(!camera.view?.enabled||camera.view.fullWidth!==w||camera.view.fullHeight!==h)camera.setViewOffset(w,h,-w*.23,0,w,h);}else if(camera.view?.enabled)camera.clearViewOffset();
  const quality=f.settings.quality==='high';renderer.shadowMap.enabled=quality;const pixelRatio=quality?Math.min(window.devicePixelRatio,1.5):.8;if(renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio);
  {const L=light(f.hour??12);scene.fog!.color.copy(L.sky);renderer.setClearColor(L.sky);hemi.color.copy(L.hemiSky);hemi.intensity=L.hemi;sun.color.copy(L.sun);sun.intensity=L.sunI;sun.position.set(f.x*S+L.dx,py+L.dy,-f.y*S+15);}sun.target.position.set(f.x*S,py,-f.y*S-15);
- updateStreaks(f);
+ updateStreaks(f);updateSpray(f,fdt);
  for(const [n,c] of crowds){if(Math.abs((n+.5)*1000-f.y)<1900)animateCrowd(c,f.clock,f.y);}
  // Chairs: position depends only on the clock, so they keep moving at the same slow pace everywhere. Only chairs near the camera are shown.
  {const t=f.clock;for(const c of chairs){const L=c.L,len=L.y0-L.y1,s=((c.i/c.n)*len+(c.up?1:-1)*t*CHAIR_SPEED+len*10)%len,yy=c.up?L.y1+s:L.y1+(len-s),k=(L.y0-yy)/len,xl=L.x0+(L.x1-L.x0)*k+(c.up?-16:16);
